@@ -11,6 +11,7 @@ export interface ExerciseBlock {
     band?: string;
     notes?: string;
     intensification?: string;
+    lexiconKey: string;
     lexiconName: string;
     lexiconText: string;
     youtubeUrl: string;

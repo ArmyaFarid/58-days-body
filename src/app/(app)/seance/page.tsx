@@ -76,6 +76,7 @@ export default async function SeancePage() {
                 band: ex.band,
                 notes: ex.notes,
                 intensification: ex.intensification,
+                lexiconKey: ex.lexiconKey,
                 lexiconName: lexicon?.name ?? ex.name,
                 lexiconText: lexicon?.text ?? "",
                 youtubeUrl: youtubeSearchUrl(lexicon?.name ?? ex.name),

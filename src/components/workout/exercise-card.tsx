@@ -15,6 +15,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { saveSetLogAction } from "@/lib/actions";
+import { ExerciseSvg, hasExerciseSvg } from "@/components/exercise-svg";
 import type { ExerciseBlock } from "./types";
 
 interface ExerciseCardProps {
@@ -189,6 +190,11 @@ function HowToDialog({ block }: { block: ExerciseBlock }) {
                 <DialogHeader>
                     <DialogTitle>{block.lexiconName}</DialogTitle>
                 </DialogHeader>
+                {hasExerciseSvg(block.lexiconKey) ? (
+                    <div className="bg-muted rounded-lg p-2">
+                        <ExerciseSvg lexiconKey={block.lexiconKey} />
+                    </div>
+                ) : null}
                 <p className="text-sm leading-relaxed">{block.lexiconText}</p>
                 <Button
                     render={<a href={block.youtubeUrl} target="_blank" rel="noopener noreferrer" />}
