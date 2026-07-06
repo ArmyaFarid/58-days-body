@@ -4,6 +4,8 @@ import { getSession } from "@/lib/auth";
 import { addPhoto } from "@/lib/data/photos";
 import { POSES } from "@/lib/photos-meta";
 
+export const runtime = "nodejs";
+
 // Retourne le token Blob, en tolérant un préfixe éventuel choisi lors de la
 // connexion du store (ex. MONPREFIXE_BLOB_READ_WRITE_TOKEN).
 function getBlobToken(): string | undefined {
@@ -12,9 +14,10 @@ function getBlobToken(): string | undefined {
     return key ? process.env[key] : undefined;
 }
 
-// Upload côté serveur : le navigateur envoie le fichier (déjà compressé) à cette
-// route, qui l'écrit dans Vercel Blob avec put() (serveur-à-serveur, sans CORS)
-// puis enregistre la photo en base.
+// Upload côté serveur, corps brut (pas de multipart) : le navigateur envoie
+// l'image compressée en corps de requête, pose/date en paramètres d'URL. La
+// route écrit dans Vercel Blob avec put() (serveur-à-serveur, sans CORS) puis
+// enregistre la photo en base.
 export async function POST(request: Request): Promise<NextResponse> {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
@@ -27,19 +30,10 @@ export async function POST(request: Request): Promise<NextResponse> {
         );
     }
 
-    let file: File | null = null;
-    let pose = "";
-    let date = "";
-    try {
-        const form = await request.formData();
-        file = form.get("file") as File | null;
-        pose = String(form.get("pose") ?? "");
-        date = String(form.get("date") ?? "");
-    } catch {
-        return NextResponse.json({ error: "Requête invalide." }, { status: 400 });
-    }
+    const { searchParams } = new URL(request.url);
+    const pose = searchParams.get("pose") ?? "";
+    const date = searchParams.get("date") ?? "";
 
-    if (!file) return NextResponse.json({ error: "Fichier manquant." }, { status: 400 });
     if (!POSES.some((p) => p.key === pose)) {
         return NextResponse.json({ error: "Pose invalide." }, { status: 400 });
     }
@@ -47,8 +41,18 @@ export async function POST(request: Request): Promise<NextResponse> {
         return NextResponse.json({ error: "Date invalide." }, { status: 400 });
     }
 
+    let bytes: ArrayBuffer;
     try {
-        const blob = await put(`photos/${date}-${pose}.jpg`, file, {
+        bytes = await request.arrayBuffer();
+    } catch {
+        return NextResponse.json({ error: "Corps de requête illisible." }, { status: 400 });
+    }
+    if (!bytes || bytes.byteLength === 0) {
+        return NextResponse.json({ error: "Fichier vide." }, { status: 400 });
+    }
+
+    try {
+        const blob = await put(`photos/${date}-${pose}.jpg`, Buffer.from(bytes), {
             access: "public",
             contentType: "image/jpeg",
             addRandomSuffix: true,

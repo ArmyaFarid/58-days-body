@@ -44,11 +44,12 @@ export function PhotosView({ today, photos }: PhotosViewProps) {
                 useWebWorker: true,
                 fileType: "image/jpeg",
             });
-            const form = new FormData();
-            form.append("file", compressed, "photo.jpg");
-            form.append("pose", poseRef.current);
-            form.append("date", today);
-            const res = await fetch("/api/photos/upload", { method: "POST", body: form });
+            const params = new URLSearchParams({ pose: poseRef.current, date: today });
+            const res = await fetch(`/api/photos/upload?${params}`, {
+                method: "POST",
+                headers: { "Content-Type": "image/jpeg" },
+                body: compressed,
+            });
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
                 throw new Error(data.error ?? `Erreur ${res.status}`);
