@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { HelpCircle, Check, PlayCircle, Zap } from "lucide-react";
+import { HelpCircle, Check, PlayCircle, Zap, Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,23 @@ import {
 import { saveSetLogAction } from "@/lib/actions";
 import { ExerciseSvg, hasExerciseSvg } from "@/components/exercise-svg";
 import type { ExerciseBlock } from "./types";
+
+const RESISTANCE_OPTIONS = ["aucune", "10 kg", "20 kg", "30 kg", "40 kg", "50 kg", "60 kg"];
+const ASSIST_OPTIONS = ["strict", "bande 10", "bande 20", "bande 30", "lesté"];
+
+function bandOptionsFor(mode: ExerciseBlock["bandMode"]): string[] {
+    if (mode === "resistance") return RESISTANCE_OPTIONS;
+    if (mode === "assist") return ASSIST_OPTIONS;
+    return [];
+}
+
+function guessBand(value: string | null | undefined, options: string[]): string | null {
+    if (!value) return null;
+    if (value.toLowerCase().includes("strict")) return options.includes("strict") ? "strict" : null;
+    const n = value.match(/\d+/)?.[0];
+    if (!n) return null;
+    return options.find((o) => o.match(/\d+/)?.[0] === n) ?? null;
+}
 
 interface ExerciseCardProps {
     sessionId: number;
@@ -40,15 +57,13 @@ export function ExerciseCard({
                     <div>
                         <p className="font-semibold leading-tight">{block.name}</p>
                         <p className="text-muted-foreground text-sm">
-                            {block.sets} × {block.reps}
+                            Objectif : {block.sets} × {block.reps}
                             {block.band ? ` · ${block.band}` : ""}
                         </p>
                     </div>
                     <HowToDialog block={block} />
                 </div>
-                {block.notes ? (
-                    <p className="text-muted-foreground text-sm">{block.notes}</p>
-                ) : null}
+                {block.notes ? <p className="text-muted-foreground text-sm">{block.notes}</p> : null}
                 {showIntensification && block.intensification ? (
                     <p className="bg-primary/10 text-primary flex items-start gap-1.5 rounded-md p-2 text-sm">
                         <Zap className="mt-0.5 size-3.5 shrink-0" />
@@ -56,7 +71,7 @@ export function ExerciseCard({
                     </p>
                 ) : null}
             </CardHeader>
-            <CardContent className="flex flex-col gap-2">
+            <CardContent className="flex flex-col gap-3">
                 {Array.from({ length: block.setCount }).map((_, i) => (
                     <SetRow
                         key={i}
@@ -64,9 +79,10 @@ export function ExerciseCard({
                         exerciseKey={block.key}
                         setIndex={i}
                         label={`${unitLabel} ${i + 1}`}
+                        bandMode={block.bandMode}
+                        recommendedBand={block.band}
                         logged={block.logged[i]}
                         last={block.last[i]}
-                        recommendedBand={block.band}
                         onSaved={onSetSaved}
                     />
                 ))}
@@ -80,9 +96,10 @@ interface SetRowProps {
     exerciseKey: string;
     setIndex: number;
     label: string;
+    bandMode: ExerciseBlock["bandMode"];
+    recommendedBand?: string;
     logged?: { reps: number | null; band: string | null };
     last?: { reps: number | null; band: string | null };
-    recommendedBand?: string;
     onSaved: () => void;
 }
 
@@ -91,32 +108,46 @@ function SetRow({
     exerciseKey,
     setIndex,
     label,
+    bandMode,
+    recommendedBand,
     logged,
     last,
-    recommendedBand,
     onSaved,
 }: SetRowProps) {
-    const [reps, setReps] = useState(
-        logged?.reps != null ? String(logged.reps) : last?.reps != null ? String(last.reps) : "",
+    const options = bandOptionsFor(bandMode);
+    const isTime = bandMode === "time";
+    const step = isTime ? 5 : 1;
+
+    const [reps, setReps] = useState<number | null>(
+        logged?.reps ?? last?.reps ?? null,
     );
-    const [band, setBand] = useState(logged?.band ?? last?.band ?? recommendedBand ?? "");
+    const [band, setBand] = useState<string | null>(
+        logged?.band ??
+            guessBand(last?.band, options) ??
+            guessBand(recommendedBand, options),
+    );
     const [saved, setSaved] = useState(logged != null);
     const [pending, startTransition] = useTransition();
 
+    function bump(delta: number) {
+        setReps((r) => Math.max(0, (r ?? 0) + delta));
+        setSaved(false);
+    }
+
+    function chooseBand(value: string) {
+        setBand(value === "aucune" ? null : value);
+        setSaved(false);
+    }
+
     function onSave() {
-        const parsed = reps.trim() === "" ? null : parseInt(reps, 10);
-        if (parsed != null && (!Number.isFinite(parsed) || parsed < 0)) {
-            toast.error("Reps invalides.");
-            return;
-        }
         startTransition(async () => {
             try {
                 await saveSetLogAction({
                     sessionId,
                     exerciseKey,
                     setIndex,
-                    reps: parsed,
-                    band: band.trim() || null,
+                    reps: reps,
+                    band: band,
                     variant: null,
                     notes: null,
                 });
@@ -130,46 +161,91 @@ function SetRow({
 
     const hint =
         last?.reps != null
-            ? `dernière : ${last.reps}${last.band ? ` · ${last.band}` : ""}`
+            ? `Dernière fois : ${last.reps}${isTime ? " s" : ""}${last.band ? ` · ${last.band}` : ""}`
             : null;
 
     return (
-        <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-2">
-                <span className="text-muted-foreground w-12 shrink-0 text-xs">{label}</span>
-                <Input
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="reps"
-                    value={reps}
-                    onChange={(e) => {
-                        setReps(e.target.value);
-                        setSaved(false);
-                    }}
-                    className="h-10 w-16 px-2 text-center text-base"
-                />
-                <Input
-                    type="text"
-                    placeholder="bande / variante"
-                    value={band}
-                    onChange={(e) => {
-                        setBand(e.target.value);
-                        setSaved(false);
-                    }}
-                    className="h-10 flex-1 text-sm"
-                />
+        <div className="border-border/60 flex flex-col gap-2 rounded-lg border p-2.5">
+            <div className="flex items-center gap-3">
+                <span className="text-muted-foreground w-12 shrink-0 text-xs font-medium">
+                    {label}
+                </span>
+                <div className="flex items-center gap-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="size-10"
+                        onClick={() => bump(-step)}
+                        aria-label="Moins"
+                    >
+                        <Minus className="size-4" />
+                    </Button>
+                    <Input
+                        type="number"
+                        inputMode="numeric"
+                        value={reps ?? ""}
+                        placeholder="0"
+                        onChange={(e) => {
+                            const v = e.target.value;
+                            setReps(v === "" ? null : Math.max(0, parseInt(v, 10) || 0));
+                            setSaved(false);
+                        }}
+                        className="h-10 w-14 px-1 text-center text-lg font-semibold"
+                    />
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="size-10"
+                        onClick={() => bump(step)}
+                        aria-label="Plus"
+                    >
+                        <Plus className="size-4" />
+                    </Button>
+                    <span className="text-muted-foreground text-sm">{isTime ? "sec" : "reps"}</span>
+                </div>
                 <Button
                     onClick={onSave}
                     disabled={pending}
                     size="icon"
                     variant={saved ? "default" : "outline"}
-                    className="size-10 shrink-0"
+                    className="ml-auto size-10 shrink-0"
                     aria-label="Enregistrer la série"
                 >
-                    <Check className="size-4" />
+                    <Check className="size-5" />
                 </Button>
             </div>
-            {hint ? <span className="text-muted-foreground pl-14 text-[11px]">{hint}</span> : null}
+
+            {options.length > 0 ? (
+                <div className="flex flex-col gap-1">
+                    <span className="text-muted-foreground text-[11px]">
+                        {bandMode === "assist" ? "Assistance" : "Bande"}
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                        {options.map((o) => {
+                            const active = o === "aucune" ? band == null : band === o;
+                            return (
+                                <button
+                                    key={o}
+                                    type="button"
+                                    onClick={() => chooseBand(o)}
+                                    className={cn(
+                                        "rounded-md px-2.5 py-1.5 text-sm transition-colors",
+                                        active
+                                            ? "bg-primary text-primary-foreground"
+                                            : "bg-muted hover:bg-muted/70",
+                                    )}
+                                >
+                                    {o}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            ) : null}
+
+            {hint ? <span className="text-muted-foreground text-[11px]">{hint}</span> : null}
         </div>
     );
 }

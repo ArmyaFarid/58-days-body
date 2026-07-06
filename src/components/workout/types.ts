@@ -11,6 +11,7 @@ export interface ExerciseBlock {
     band?: string;
     notes?: string;
     intensification?: string;
+    bandMode: "resistance" | "assist" | "none" | "time";
     lexiconKey: string;
     lexiconName: string;
     lexiconText: string;

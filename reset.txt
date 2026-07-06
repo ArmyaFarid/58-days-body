@@ -1,0 +1,1 @@
+DATABASE_URL="$(grep '^DATABASE_URL=' .env.local | grep neon.tech | head -1 | cut -d= -f2-)" npm run db:reset

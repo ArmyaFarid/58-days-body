@@ -1,5 +1,5 @@
 import { differenceInCalendarDays, parseISO } from "date-fns";
-import type { DayType, Phase } from "./types";
+import type { DayType, Phase, Exercise } from "./types";
 import { SESSIONS } from "./sessions";
 
 export * from "./types";
@@ -76,6 +76,17 @@ export function parseSetCount(sets: string): number {
     const m = sets.match(/^\d+/);
     const n = m ? parseInt(m[0], 10) : 3;
     return Math.min(8, Math.max(1, n));
+}
+
+/** Type de charge à saisir pour un exercice (pilote les boutons de saisie). */
+export type BandMode = "resistance" | "assist" | "none" | "time";
+
+export function getBandMode(exercise: Exercise): BandMode {
+    if (exercise.key === "dead-hang") return "time";
+    const b = (exercise.band ?? "").toLowerCase();
+    if (b.includes("assist")) return "assist";
+    if (b) return "resistance";
+    return "none";
 }
 
 /** En délestage, seuls Poussée A, Tirage A et Poussée B sont travaillés. */

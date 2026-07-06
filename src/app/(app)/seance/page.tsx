@@ -18,6 +18,7 @@ import {
     getSession,
     isTrainingDay,
     parseSetCount,
+    getBandMode,
     LEXICON,
     youtubeSearchUrl,
 } from "@/lib/program";
@@ -78,6 +79,7 @@ export default async function SeancePage() {
                 band: ex.band,
                 notes: ex.notes,
                 intensification: ex.intensification,
+                bandMode: getBandMode(ex),
                 lexiconKey: ex.lexiconKey,
                 lexiconName: lexicon?.name ?? ex.name,
                 lexiconText: lexicon?.text ?? "",
