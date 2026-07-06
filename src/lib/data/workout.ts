@@ -21,6 +21,7 @@ export interface WorkoutSession {
 }
 
 export async function getOrCreateSession(
+    userId: number,
     date: string,
     dayType: string,
     phase: string,
@@ -28,7 +29,7 @@ export async function getOrCreateSession(
     const existing = await db
         .select()
         .from(workoutSessions)
-        .where(eq(workoutSessions.date, date))
+        .where(and(eq(workoutSessions.userId, userId), eq(workoutSessions.date, date)))
         .limit(1);
     if (existing[0]) {
         const r = existing[0];
@@ -36,7 +37,7 @@ export async function getOrCreateSession(
     }
     const inserted = await db
         .insert(workoutSessions)
-        .values({ date, dayType, phase })
+        .values({ userId, date, dayType, phase })
         .returning();
     const r = inserted[0];
     return { id: r.id, date: r.date, dayType: r.dayType, phase: r.phase, completed: r.completed };
@@ -54,8 +55,9 @@ export async function getSetLogsForSession(sessionId: number): Promise<SetLog[]>
     }));
 }
 
-/** Les séries de la dernière fois que cet exercice a été fait (avant `beforeDate`). */
+/** Les séries de la dernière fois que cet exercice a été fait par l'utilisateur. */
 export async function getLastPerformance(
+    userId: number,
     exerciseKey: string,
     beforeDate: string,
 ): Promise<SetLog[]> {
@@ -70,7 +72,13 @@ export async function getLastPerformance(
         })
         .from(setLogs)
         .innerJoin(workoutSessions, eq(setLogs.sessionId, workoutSessions.id))
-        .where(and(eq(setLogs.exerciseKey, exerciseKey), lt(workoutSessions.date, beforeDate)))
+        .where(
+            and(
+                eq(workoutSessions.userId, userId),
+                eq(setLogs.exerciseKey, exerciseKey),
+                lt(workoutSessions.date, beforeDate),
+            ),
+        )
         .orderBy(desc(workoutSessions.date), setLogs.setIndex);
 
     if (!rows.length) return [];
@@ -88,6 +96,7 @@ export async function getLastPerformance(
 }
 
 export interface SaveSetInput {
+    userId: number;
     sessionId: number;
     exerciseKey: string;
     setIndex: number;
@@ -98,9 +107,25 @@ export interface SaveSetInput {
 }
 
 export async function saveSetLog(input: SaveSetInput): Promise<void> {
+    // Sécurité : vérifie que la séance appartient bien à l'utilisateur.
+    const owned = await db
+        .select({ id: workoutSessions.id })
+        .from(workoutSessions)
+        .where(and(eq(workoutSessions.id, input.sessionId), eq(workoutSessions.userId, input.userId)))
+        .limit(1);
+    if (!owned[0]) throw new Error("Séance introuvable.");
+
     await db
         .insert(setLogs)
-        .values(input)
+        .values({
+            sessionId: input.sessionId,
+            exerciseKey: input.exerciseKey,
+            setIndex: input.setIndex,
+            reps: input.reps,
+            band: input.band,
+            variant: input.variant,
+            notes: input.notes,
+        })
         .onConflictDoUpdate({
             target: [setLogs.sessionId, setLogs.exerciseKey, setLogs.setIndex],
             set: {
@@ -112,11 +137,15 @@ export async function saveSetLog(input: SaveSetInput): Promise<void> {
         });
 }
 
-export async function setSessionCompleted(sessionId: number, completed: boolean): Promise<void> {
+export async function setSessionCompleted(
+    userId: number,
+    sessionId: number,
+    completed: boolean,
+): Promise<void> {
     await db
         .update(workoutSessions)
         .set({ completed, completedAt: completed ? new Date() : null })
-        .where(eq(workoutSessions.id, sessionId));
+        .where(and(eq(workoutSessions.id, sessionId), eq(workoutSessions.userId, userId)));
 }
 
 export interface ExerciseHistoryEntry {
@@ -124,11 +153,9 @@ export interface ExerciseHistoryEntry {
     sets: { setIndex: number; reps: number | null; band: string | null }[];
 }
 
-/**
- * Historique de tous les exercices loggés, regroupé par clé puis par date
- * (récent d'abord), en une seule requête.
- */
-export async function getAllExerciseHistories(): Promise<Record<string, ExerciseHistoryEntry[]>> {
+export async function getAllExerciseHistories(
+    userId: number,
+): Promise<Record<string, ExerciseHistoryEntry[]>> {
     const rows = await db
         .select({
             date: workoutSessions.date,
@@ -139,6 +166,7 @@ export async function getAllExerciseHistories(): Promise<Record<string, Exercise
         })
         .from(setLogs)
         .innerJoin(workoutSessions, eq(setLogs.sessionId, workoutSessions.id))
+        .where(eq(workoutSessions.userId, userId))
         .orderBy(desc(workoutSessions.date), setLogs.setIndex);
 
     const result: Record<string, ExerciseHistoryEntry[]> = {};

@@ -3,6 +3,7 @@ import { Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WorkoutView } from "@/components/workout/workout-view";
 import type { ExerciseBlock, LoggedSet } from "@/components/workout/types";
+import { getSession as getAuthSession } from "@/lib/auth";
 import { getStartDate } from "@/lib/data/settings";
 import {
     getOrCreateSession,
@@ -22,7 +23,8 @@ import {
 } from "@/lib/program";
 
 export default async function SeancePage() {
-    const startDate = (await getStartDate())!;
+    const { userId } = (await getAuthSession())!;
+    const startDate = (await getStartDate(userId))!;
     const today = todayISO();
     const dayNumber = getDayNumber(startDate, fromISO(today));
     const phase = getPhaseForDay(dayNumber);
@@ -51,13 +53,13 @@ export default async function SeancePage() {
         );
     }
 
-    const wSession = await getOrCreateSession(today, dayType, phase?.key ?? "libre");
+    const wSession = await getOrCreateSession(userId, today, dayType, phase?.key ?? "libre");
     const todayLogs = await getSetLogsForSession(wSession.id);
 
     const blocks: ExerciseBlock[] = await Promise.all(
         session.exercises.map(async (ex) => {
             const lexicon = LEXICON[ex.lexiconKey];
-            const last = await getLastPerformance(ex.key, today);
+            const last = await getLastPerformance(userId, ex.key, today);
 
             const loggedMap: Record<number, LoggedSet> = {};
             for (const l of todayLogs.filter((t) => t.exerciseKey === ex.key)) {

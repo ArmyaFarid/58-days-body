@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { QuickWeight } from "@/components/quick-weight";
 import { HabitChecklist } from "@/components/habit-checklist";
+import { getSession as getAuthSession } from "@/lib/auth";
 import { getStartDate } from "@/lib/data/settings";
 import { getWeights, getWeightForDate, computeTrend } from "@/lib/data/weight";
 import { getHabit } from "@/lib/data/habits";
@@ -20,7 +21,8 @@ import {
 } from "@/lib/program";
 
 export default async function DashboardPage() {
-    const startDate = (await getStartDate())!;
+    const { userId } = (await getAuthSession())!;
+    const startDate = (await getStartDate(userId))!;
     const today = todayISO();
     const dayNumber = getDayNumber(startDate, fromISO(today));
     const phase = getPhaseForDay(dayNumber);
@@ -29,9 +31,9 @@ export default async function DashboardPage() {
     const training = isTrainingDay(dayType, phase?.key ?? null);
 
     const [weights, todayWeight, habit] = await Promise.all([
-        getWeights(),
-        getWeightForDate(today),
-        getHabit(today),
+        getWeights(userId),
+        getWeightForDate(userId, today),
+        getHabit(userId, today),
     ]);
     const trend = computeTrend(weights);
 

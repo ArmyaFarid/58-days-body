@@ -16,16 +16,16 @@ export async function proxy(request: NextRequest) {
     const token = request.cookies.get("session")?.value;
     const valid = await isValidSession(token);
 
-    const isLoginPage = pathname === "/login";
-    const isLoginApi = pathname === "/api/auth/login";
+    const publicPaths = ["/login", "/signup", "/api/auth/login", "/api/auth/signup"];
+    const isPublic = publicPaths.includes(pathname);
 
-    if (!valid && !isLoginPage && !isLoginApi) {
+    if (!valid && !isPublic) {
         const url = request.nextUrl.clone();
         url.pathname = "/login";
         return NextResponse.redirect(url);
     }
 
-    if (valid && isLoginPage) {
+    if (valid && (pathname === "/login" || pathname === "/signup")) {
         const url = request.nextUrl.clone();
         url.pathname = "/";
         return NextResponse.redirect(url);

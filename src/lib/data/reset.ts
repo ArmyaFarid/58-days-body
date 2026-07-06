@@ -1,4 +1,5 @@
 import "server-only";
+import { eq } from "drizzle-orm";
 import { del } from "@vercel/blob";
 import { db } from "@/lib/db";
 import {
@@ -11,11 +12,11 @@ import {
 } from "@/lib/db/schema";
 import { getBlobToken } from "@/lib/blob-token";
 
-// Remet l'app à zéro : supprime toutes les données (et les blobs photos), mais
-// conserve le mot de passe (table credentials). L'utilisateur repasse par l'onboarding.
-export async function resetAllData(): Promise<void> {
+// Remet à zéro les données d'UN utilisateur (et ses blobs photos). Le compte
+// et le mot de passe sont conservés ; il repasse par l'onboarding.
+export async function resetAllData(userId: number): Promise<void> {
     const token = getBlobToken();
-    const photoRows = await db.select().from(photos);
+    const photoRows = await db.select().from(photos).where(eq(photos.userId, userId));
     for (const p of photoRows) {
         try {
             await del(p.blobUrl, token ? { token } : undefined);
@@ -24,10 +25,10 @@ export async function resetAllData(): Promise<void> {
         }
     }
 
-    await db.delete(photos);
-    await db.delete(weightLogs);
-    await db.delete(habitLogs);
-    await db.delete(measurements);
-    await db.delete(workoutSessions); // supprime les set_logs en cascade
-    await db.delete(settings);
+    await db.delete(photos).where(eq(photos.userId, userId));
+    await db.delete(weightLogs).where(eq(weightLogs.userId, userId));
+    await db.delete(habitLogs).where(eq(habitLogs.userId, userId));
+    await db.delete(measurements).where(eq(measurements.userId, userId));
+    await db.delete(workoutSessions).where(eq(workoutSessions.userId, userId)); // set_logs en cascade
+    await db.delete(settings).where(eq(settings.userId, userId));
 }

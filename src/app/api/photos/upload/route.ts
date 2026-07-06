@@ -51,7 +51,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             addRandomSuffix: true,
             token,
         });
-        await addPhoto(date, pose, blob.url);
+        await addPhoto(session.userId, date, pose, blob.url);
         return NextResponse.json({ url: blob.url });
     } catch (error) {
         return NextResponse.json(

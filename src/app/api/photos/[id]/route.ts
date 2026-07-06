@@ -21,7 +21,7 @@ export async function GET(
         return NextResponse.json({ error: "Id invalide." }, { status: 400 });
     }
 
-    const photo = await getPhotoById(photoId);
+    const photo = await getPhotoById(session.userId, photoId);
     if (!photo) return NextResponse.json({ error: "Introuvable." }, { status: 404 });
 
     const token = getBlobToken();

@@ -1,5 +1,5 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { measurements } from "@/lib/db/schema";
 
@@ -12,8 +12,12 @@ export interface Measurement {
     thigh: number | null;
 }
 
-export async function getMeasurements(): Promise<Measurement[]> {
-    const rows = await db.select().from(measurements).orderBy(measurements.date);
+export async function getMeasurements(userId: number): Promise<Measurement[]> {
+    const rows = await db
+        .select()
+        .from(measurements)
+        .where(eq(measurements.userId, userId))
+        .orderBy(measurements.date);
     return rows.map((r) => ({
         date: r.date,
         shoulders: r.shoulders,
@@ -24,8 +28,15 @@ export async function getMeasurements(): Promise<Measurement[]> {
     }));
 }
 
-export async function getMeasurementForDate(date: string): Promise<Measurement | null> {
-    const rows = await db.select().from(measurements).where(eq(measurements.date, date)).limit(1);
+export async function getMeasurementForDate(
+    userId: number,
+    date: string,
+): Promise<Measurement | null> {
+    const rows = await db
+        .select()
+        .from(measurements)
+        .where(and(eq(measurements.userId, userId), eq(measurements.date, date)))
+        .limit(1);
     const r = rows[0];
     if (!r) return null;
     return {
@@ -40,9 +51,13 @@ export async function getMeasurementForDate(date: string): Promise<Measurement |
 
 export type MeasurementValues = Omit<Measurement, "date">;
 
-export async function upsertMeasurement(date: string, values: MeasurementValues): Promise<void> {
+export async function upsertMeasurement(
+    userId: number,
+    date: string,
+    values: MeasurementValues,
+): Promise<void> {
     await db
         .insert(measurements)
-        .values({ date, ...values })
-        .onConflictDoUpdate({ target: measurements.date, set: values });
+        .values({ userId, date, ...values })
+        .onConflictDoUpdate({ target: [measurements.userId, measurements.date], set: values });
 }

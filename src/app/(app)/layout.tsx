@@ -12,7 +12,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     const session = await getSession();
     if (!session) redirect("/login");
 
-    const startDate = await getStartDate();
+    const startDate = await getStartDate(session.userId);
     if (!startDate) redirect("/onboarding");
 
     return (

@@ -10,32 +10,48 @@ import {
     unique,
 } from "drizzle-orm/pg-core";
 
+export const users = pgTable("users", {
+    id: serial("id").primaryKey(),
+    username: text("username").notNull().unique(),
+    passwordHashB64: text("password_hash_b64").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// user_id est nullable pour permettre la migration (backfill) des données
+// existantes ; l'app le renseigne et filtre dessus systématiquement.
+const userRef = () => integer("user_id").references(() => users.id, { onDelete: "cascade" });
+
 export const settings = pgTable("settings", {
     id: serial("id").primaryKey(),
+    userId: userRef().unique(),
     startDate: date("start_date").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Mot de passe changé depuis l'app (prioritaire sur AUTH_PASSWORD_HASH_B64).
-export const credentials = pgTable("credentials", {
-    id: serial("id").primaryKey(),
-    passwordHashB64: text("password_hash_b64").notNull(),
-});
+export const weightLogs = pgTable(
+    "weight_logs",
+    {
+        id: serial("id").primaryKey(),
+        userId: userRef(),
+        date: date("date").notNull(),
+        weightKg: real("weight_kg").notNull(),
+    },
+    (t) => [unique("weight_logs_user_date").on(t.userId, t.date)],
+);
 
-export const weightLogs = pgTable("weight_logs", {
-    id: serial("id").primaryKey(),
-    date: date("date").notNull().unique(),
-    weightKg: real("weight_kg").notNull(),
-});
-
-export const workoutSessions = pgTable("workout_sessions", {
-    id: serial("id").primaryKey(),
-    date: date("date").notNull().unique(),
-    dayType: text("day_type").notNull(),
-    phase: text("phase").notNull(),
-    completed: boolean("completed").default(false).notNull(),
-    completedAt: timestamp("completed_at"),
-});
+export const workoutSessions = pgTable(
+    "workout_sessions",
+    {
+        id: serial("id").primaryKey(),
+        userId: userRef(),
+        date: date("date").notNull(),
+        dayType: text("day_type").notNull(),
+        phase: text("phase").notNull(),
+        completed: boolean("completed").default(false).notNull(),
+        completedAt: timestamp("completed_at"),
+    },
+    (t) => [unique("workout_sessions_user_date").on(t.userId, t.date)],
+);
 
 export const setLogs = pgTable(
     "set_logs",
@@ -54,29 +70,40 @@ export const setLogs = pgTable(
     (t) => [unique("set_logs_session_exercise_set").on(t.sessionId, t.exerciseKey, t.setIndex)],
 );
 
-export const habitLogs = pgTable("habit_logs", {
-    id: serial("id").primaryKey(),
-    date: date("date").notNull().unique(),
-    creatine: boolean("creatine").default(false).notNull(),
-    kcal3000: boolean("kcal3000").default(false).notNull(),
-    protein140: boolean("protein140").default(false).notNull(),
-    sleepBefore23: boolean("sleep_before_23").default(false).notNull(),
-});
+export const habitLogs = pgTable(
+    "habit_logs",
+    {
+        id: serial("id").primaryKey(),
+        userId: userRef(),
+        date: date("date").notNull(),
+        creatine: boolean("creatine").default(false).notNull(),
+        kcal3000: boolean("kcal3000").default(false).notNull(),
+        protein140: boolean("protein140").default(false).notNull(),
+        sleepBefore23: boolean("sleep_before_23").default(false).notNull(),
+    },
+    (t) => [unique("habit_logs_user_date").on(t.userId, t.date)],
+);
 
 export const photos = pgTable("photos", {
     id: serial("id").primaryKey(),
+    userId: userRef(),
     date: date("date").notNull(),
     pose: text("pose").notNull(),
     blobUrl: text("blob_url").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const measurements = pgTable("measurements", {
-    id: serial("id").primaryKey(),
-    date: date("date").notNull().unique(),
-    shoulders: real("shoulders"),
-    chest: real("chest"),
-    arm: real("arm"),
-    waist: real("waist"),
-    thigh: real("thigh"),
-});
+export const measurements = pgTable(
+    "measurements",
+    {
+        id: serial("id").primaryKey(),
+        userId: userRef(),
+        date: date("date").notNull(),
+        shoulders: real("shoulders"),
+        chest: real("chest"),
+        arm: real("arm"),
+        waist: real("waist"),
+        thigh: real("thigh"),
+    },
+    (t) => [unique("measurements_user_date").on(t.userId, t.date)],
+);

@@ -1,5 +1,5 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { startOfWeek, format } from "date-fns";
 import { db } from "@/lib/db";
 import { weightLogs } from "@/lib/db/schema";
@@ -10,21 +10,29 @@ export interface WeightEntry {
     weightKg: number;
 }
 
-export async function getWeights(): Promise<WeightEntry[]> {
-    const rows = await db.select().from(weightLogs).orderBy(weightLogs.date);
+export async function getWeights(userId: number): Promise<WeightEntry[]> {
+    const rows = await db
+        .select()
+        .from(weightLogs)
+        .where(eq(weightLogs.userId, userId))
+        .orderBy(weightLogs.date);
     return rows.map((r) => ({ date: r.date, weightKg: r.weightKg }));
 }
 
-export async function getWeightForDate(date: string): Promise<number | null> {
-    const rows = await db.select().from(weightLogs).where(eq(weightLogs.date, date)).limit(1);
+export async function getWeightForDate(userId: number, date: string): Promise<number | null> {
+    const rows = await db
+        .select()
+        .from(weightLogs)
+        .where(and(eq(weightLogs.userId, userId), eq(weightLogs.date, date)))
+        .limit(1);
     return rows[0]?.weightKg ?? null;
 }
 
-export async function upsertWeight(date: string, weightKg: number): Promise<void> {
+export async function upsertWeight(userId: number, date: string, weightKg: number): Promise<void> {
     await db
         .insert(weightLogs)
-        .values({ date, weightKg })
-        .onConflictDoUpdate({ target: weightLogs.date, set: { weightKg } });
+        .values({ userId, date, weightKg })
+        .onConflictDoUpdate({ target: [weightLogs.userId, weightLogs.date], set: { weightKg } });
 }
 
 export interface WeeklyAverage {
@@ -55,9 +63,7 @@ export interface WeightTrend {
     latest: WeightEntry | null;
     currentWeekAvg: number | null;
     previousWeekAvg: number | null;
-    /** Variation kg/semaine entre les deux dernières semaines complètes. */
     deltaPerWeek: number | null;
-    /** Suggestion nutritionnelle selon les règles du programme. */
     suggestion: "surplus" | "deficit" | null;
     suggestionText: string | null;
 }

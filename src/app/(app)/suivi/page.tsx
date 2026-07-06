@@ -7,6 +7,7 @@ import { PhotosView } from "@/components/tracking/photos-view";
 import { MeasurementsView } from "@/components/tracking/measurements-view";
 import { PerfHistoryView } from "@/components/tracking/perf-history-view";
 import { SuiviTabs } from "./suivi-tabs";
+import { getSession } from "@/lib/auth";
 import { getWeights, getWeightForDate, computeWeeklyAverages, computeTrend } from "@/lib/data/weight";
 import { getPhotos } from "@/lib/data/photos";
 import { getMeasurements, getMeasurementForDate } from "@/lib/data/measurements";
@@ -14,9 +15,12 @@ import { getAllExerciseHistories } from "@/lib/data/workout";
 import { getExerciseName, TRACTION_KEYS } from "@/lib/program";
 import { todayISO, fromISO } from "@/lib/date";
 
-async function PoidsSection() {
+async function PoidsSection({ userId }: { userId: number }) {
     const today = todayISO();
-    const [weights, todayWeight] = await Promise.all([getWeights(), getWeightForDate(today)]);
+    const [weights, todayWeight] = await Promise.all([
+        getWeights(userId),
+        getWeightForDate(userId, today),
+    ]);
     const trend = computeTrend(weights);
 
     const weekly = computeWeeklyAverages(weights);
@@ -100,22 +104,22 @@ async function PoidsSection() {
     );
 }
 
-async function PhotosSection() {
-    const photos = await getPhotos();
+async function PhotosSection({ userId }: { userId: number }) {
+    const photos = await getPhotos(userId);
     return <PhotosView today={todayISO()} photos={photos} />;
 }
 
-async function MensurationsSection() {
+async function MensurationsSection({ userId }: { userId: number }) {
     const today = todayISO();
     const [measurements, initial] = await Promise.all([
-        getMeasurements(),
-        getMeasurementForDate(today),
+        getMeasurements(userId),
+        getMeasurementForDate(userId, today),
     ]);
     return <MeasurementsView today={today} initial={initial} measurements={measurements} />;
 }
 
-async function HistoriqueSection() {
-    const histories = await getAllExerciseHistories();
+async function HistoriqueSection({ userId }: { userId: number }) {
+    const histories = await getAllExerciseHistories(userId);
     const exercises = Object.keys(histories).map((key) => ({ key, name: getExerciseName(key) }));
     return (
         <PerfHistoryView
@@ -132,13 +136,14 @@ export default async function SuiviPage({
     searchParams: Promise<{ tab?: string }>;
 }) {
     const { tab } = await searchParams;
+    const { userId } = (await getSession())!;
     return (
         <SuiviTabs
             initialTab={tab}
-            poids={<PoidsSection />}
-            photos={<PhotosSection />}
-            mensurations={<MensurationsSection />}
-            historique={<HistoriqueSection />}
+            poids={<PoidsSection userId={userId} />}
+            photos={<PhotosSection userId={userId} />}
+            mensurations={<MensurationsSection userId={userId} />}
+            historique={<HistoriqueSection userId={userId} />}
         />
     );
 }

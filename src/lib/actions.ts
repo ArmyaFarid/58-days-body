@@ -2,28 +2,21 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import bcrypt from "bcryptjs";
-import { getSession, verifyCredentials } from "@/lib/auth";
+import { requireUserId, changePassword } from "@/lib/auth";
 import { setStartDate } from "@/lib/data/settings";
 import { upsertWeight } from "@/lib/data/weight";
 import { setHabit, type HabitField } from "@/lib/data/habits";
 import { saveSetLog, setSessionCompleted } from "@/lib/data/workout";
 import { deletePhoto } from "@/lib/data/photos";
 import { upsertMeasurement } from "@/lib/data/measurements";
-import { setStoredPasswordHashB64 } from "@/lib/data/credentials";
 import { resetAllData } from "@/lib/data/reset";
-
-async function requireAuth() {
-    const session = await getSession();
-    if (!session) throw new Error("Non authentifié.");
-}
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date invalide.");
 
 export async function setStartDateAction(date: string) {
-    await requireAuth();
+    const userId = await requireUserId();
     const parsed = isoDate.parse(date);
-    await setStartDate(parsed);
+    await setStartDate(userId, parsed);
     revalidatePath("/");
     revalidatePath("/onboarding");
 }
@@ -34,9 +27,9 @@ const weightSchema = z.object({
 });
 
 export async function upsertWeightAction(date: string, weightKg: number) {
-    await requireAuth();
+    const userId = await requireUserId();
     const parsed = weightSchema.parse({ date, weightKg });
-    await upsertWeight(parsed.date, parsed.weightKg);
+    await upsertWeight(userId, parsed.date, parsed.weightKg);
     revalidatePath("/");
     revalidatePath("/suivi");
 }
@@ -44,12 +37,13 @@ export async function upsertWeightAction(date: string, weightKg: number) {
 const habitFields = ["creatine", "kcal3000", "protein140", "sleepBefore23"] as const;
 
 export async function setHabitAction(date: string, field: HabitField, value: boolean) {
-    await requireAuth();
+    const userId = await requireUserId();
     const parsedDate = isoDate.parse(date);
     const parsedField = z.enum(habitFields).parse(field);
-    await setHabit(parsedDate, parsedField, value);
+    await setHabit(userId, parsedDate, parsedField, value);
     revalidatePath("/");
     revalidatePath("/suivi");
+    revalidatePath("/habitudes");
 }
 
 const setLogSchema = z.object({
@@ -63,24 +57,24 @@ const setLogSchema = z.object({
 });
 
 export async function saveSetLogAction(input: z.infer<typeof setLogSchema>) {
-    await requireAuth();
+    const userId = await requireUserId();
     const parsed = setLogSchema.parse(input);
-    await saveSetLog(parsed);
+    await saveSetLog({ userId, ...parsed });
     revalidatePath("/seance");
 }
 
 export async function completeSessionAction(sessionId: number, completed: boolean) {
-    await requireAuth();
+    const userId = await requireUserId();
     const id = z.number().int().positive().parse(sessionId);
-    await setSessionCompleted(id, Boolean(completed));
+    await setSessionCompleted(userId, id, Boolean(completed));
     revalidatePath("/seance");
     revalidatePath("/");
 }
 
 export async function deletePhotoAction(id: number) {
-    await requireAuth();
+    const userId = await requireUserId();
     const parsed = z.number().int().positive().parse(id);
-    await deletePhoto(parsed);
+    await deletePhoto(userId, parsed);
     revalidatePath("/suivi");
 }
 
@@ -95,30 +89,21 @@ const measurementSchema = z.object({
 });
 
 export async function upsertMeasurementAction(input: z.infer<typeof measurementSchema>) {
-    await requireAuth();
+    const userId = await requireUserId();
     const { date, ...values } = measurementSchema.parse(input);
-    await upsertMeasurement(date, values);
+    await upsertMeasurement(userId, date, values);
     revalidatePath("/suivi");
 }
 
 export async function changePasswordAction(current: string, next: string) {
-    await requireAuth();
-    const username = process.env.AUTH_USERNAME ?? "";
-    const ok = await verifyCredentials(username, current);
-    if (!ok) throw new Error("Mot de passe actuel incorrect.");
-    const newPassword = z
-        .string()
-        .min(4, "Minimum 4 caractères.")
-        .max(200)
-        .parse(next);
-    const hash = bcrypt.hashSync(newPassword, 10);
-    const b64 = Buffer.from(hash, "utf8").toString("base64");
-    await setStoredPasswordHashB64(b64);
+    const userId = await requireUserId();
+    const result = await changePassword(userId, current, next);
+    if (result.error) throw new Error(result.error);
 }
 
 export async function resetAllAction() {
-    await requireAuth();
-    await resetAllData();
+    const userId = await requireUserId();
+    await resetAllData(userId);
     revalidatePath("/");
     revalidatePath("/suivi");
     revalidatePath("/habitudes");

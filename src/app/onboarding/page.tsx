@@ -8,7 +8,7 @@ export default async function OnboardingPage() {
     const session = await getSession();
     if (!session) redirect("/login");
 
-    const startDate = await getStartDate();
+    const startDate = await getStartDate(session.userId);
     if (startDate) redirect("/");
 
     return <OnboardingForm defaultDate={todayISO()} />;

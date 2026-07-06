@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { verifyCredentials, createSession } from "@/lib/auth";
+import { authenticate, createSession } from "@/lib/auth";
 
 export async function POST(request: Request) {
     let username = "";
@@ -12,11 +12,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Requête invalide." }, { status: 400 });
     }
 
-    const ok = await verifyCredentials(username, password);
-    if (!ok) {
+    const user = await authenticate(username, password);
+    if (!user) {
         return NextResponse.json({ error: "Identifiants incorrects." }, { status: 401 });
     }
 
-    await createSession();
+    await createSession(user);
     return NextResponse.json({ ok: true });
 }

@@ -1,5 +1,5 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { habitLogs } from "@/lib/db/schema";
 
@@ -21,8 +21,12 @@ const EMPTY = (date: string): HabitDay => ({
     sleepBefore23: false,
 });
 
-export async function getHabit(date: string): Promise<HabitDay> {
-    const rows = await db.select().from(habitLogs).where(eq(habitLogs.date, date)).limit(1);
+export async function getHabit(userId: number, date: string): Promise<HabitDay> {
+    const rows = await db
+        .select()
+        .from(habitLogs)
+        .where(and(eq(habitLogs.userId, userId), eq(habitLogs.date, date)))
+        .limit(1);
     const r = rows[0];
     if (!r) return EMPTY(date);
     return {
@@ -34,8 +38,12 @@ export async function getHabit(date: string): Promise<HabitDay> {
     };
 }
 
-export async function getAllHabits(): Promise<HabitDay[]> {
-    const rows = await db.select().from(habitLogs).orderBy(habitLogs.date);
+export async function getAllHabits(userId: number): Promise<HabitDay[]> {
+    const rows = await db
+        .select()
+        .from(habitLogs)
+        .where(eq(habitLogs.userId, userId))
+        .orderBy(habitLogs.date);
     return rows.map((r) => ({
         date: r.date,
         creatine: r.creatine,
@@ -45,17 +53,23 @@ export async function getAllHabits(): Promise<HabitDay[]> {
     }));
 }
 
-export async function setHabit(date: string, field: HabitField, value: boolean): Promise<void> {
-    const current = await getHabit(date);
+export async function setHabit(
+    userId: number,
+    date: string,
+    field: HabitField,
+    value: boolean,
+): Promise<void> {
+    const current = await getHabit(userId, date);
     const next = { ...current, [field]: value };
     await db
         .insert(habitLogs)
         .values({
+            userId,
             date,
             creatine: next.creatine,
             kcal3000: next.kcal3000,
             protein140: next.protein140,
             sleepBefore23: next.sleepBefore23,
         })
-        .onConflictDoUpdate({ target: habitLogs.date, set: { [field]: value } });
+        .onConflictDoUpdate({ target: [habitLogs.userId, habitLogs.date], set: { [field]: value } });
 }
