@@ -6,8 +6,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2, KeyRound, TriangleAlert } from "lucide-react";
+import { Loader2, KeyRound, TriangleAlert, Palette } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AppearanceSettings } from "@/components/appearance-settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,6 +76,18 @@ export function SettingsView() {
     return (
         <div className="flex flex-col gap-4 p-4">
             <h1 className="pt-2 text-2xl font-bold tracking-tight">Paramètres</h1>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                        <Palette className="size-4" />
+                        Apparence
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <AppearanceSettings />
+                </CardContent>
+            </Card>
 
             <Card>
                 <CardHeader>

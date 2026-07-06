@@ -25,11 +25,11 @@ export function AppNav() {
                             key={href}
                             href={href}
                             className={cn(
-                                "flex flex-1 flex-col items-center gap-1 py-2.5 text-xs transition-colors",
+                                "flex flex-1 flex-col items-center gap-1 py-2.5 text-[0.7rem] font-medium transition-colors",
                                 active ? "text-primary" : "text-muted-foreground",
                             )}
                         >
-                            <Icon className="size-5" />
+                            <Icon className={cn("size-6", active && "stroke-[2.5]")} />
                             {label}
                         </Link>
                     );

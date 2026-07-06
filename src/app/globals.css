@@ -128,3 +128,14 @@
     @apply font-sans;
   }
 }
+/* Taille d'affichage : agrandit texte + icônes (basés sur rem) de façon
+   proportionnelle. Persisté via localStorage (data-size sur <html>). */
+html {
+  font-size: 16px;
+}
+html[data-size="moyen"] {
+  font-size: 18px;
+}
+html[data-size="gros"] {
+  font-size: 20px;
+}

@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth";
 import { getStartDate } from "@/lib/data/settings";
 import { AppNav } from "@/components/app-nav";
 import { LogoutButton } from "@/components/logout-button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -22,6 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                     58 jours
                 </span>
                 <div className="flex items-center gap-1">
+                    <ThemeToggle />
                     <Button
                         render={<Link href="/parametres" />}
                         variant="ghost"
@@ -29,7 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                         className="text-muted-foreground"
                         aria-label="Paramètres"
                     >
-                        <Settings className="size-4" />
+                        <Settings className="size-5" />
                     </Button>
                     <LogoutButton />
                 </div>

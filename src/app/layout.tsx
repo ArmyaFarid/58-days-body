@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { RegisterSW } from "@/components/register-sw";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -22,18 +23,21 @@ export const metadata: Metadata = {
     },
     appleWebApp: {
         capable: true,
-        statusBarStyle: "black-translucent",
+        statusBarStyle: "default",
         title: "58 jours",
     },
 };
 
 export const viewport: Viewport = {
-    themeColor: "#0a0a0a",
+    themeColor: "#ffffff",
     width: "device-width",
     initialScale: 1,
     maximumScale: 1,
     userScalable: false,
 };
+
+// Applique la taille d'affichage avant le premier paint (évite le flash).
+const sizeScript = `(function(){try{var s=localStorage.getItem('ui-size');if(s&&s!=='normal')document.documentElement.setAttribute('data-size',s);}catch(e){}})();`;
 
 export default function RootLayout({
     children,
@@ -41,10 +45,18 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="fr" className={`${geistSans.variable} dark h-full antialiased`}>
-            <body className="bg-background text-foreground min-h-full flex flex-col">
-                {children}
-                <Toaster position="top-center" />
+        <html lang="fr" suppressHydrationWarning className={`${geistSans.variable} h-full antialiased`}>
+            <body className="bg-background text-foreground flex min-h-full flex-col">
+                <script dangerouslySetInnerHTML={{ __html: sizeScript }} />
+                <ThemeProvider
+                    attribute="class"
+                    defaultTheme="light"
+                    enableSystem={false}
+                    disableTransitionOnChange
+                >
+                    {children}
+                    <Toaster position="top-center" />
+                </ThemeProvider>
                 <RegisterSW />
             </body>
         </html>
