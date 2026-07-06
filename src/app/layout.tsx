@@ -13,6 +13,13 @@ export const metadata: Metadata = {
     title: "Programme 58 jours",
     description: "Assistant d'entraînement — programme de 58 jours",
     manifest: "/manifest.json",
+    icons: {
+        icon: [
+            { url: "/icon.svg", type: "image/svg+xml" },
+            { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+        ],
+        apple: "/apple-touch-icon.png",
+    },
     appleWebApp: {
         capable: true,
         statusBarStyle: "black-translucent",
