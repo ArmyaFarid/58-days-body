@@ -4,18 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { QuickWeight } from "@/components/quick-weight";
 import { WeightChart, type WeightPoint } from "@/components/tracking/weight-chart";
 import { PhotosView } from "@/components/tracking/photos-view";
+import { MeasurementsView } from "@/components/tracking/measurements-view";
+import { PerfHistoryView } from "@/components/tracking/perf-history-view";
 import { SuiviTabs } from "./suivi-tabs";
 import { getWeights, getWeightForDate, computeWeeklyAverages, computeTrend } from "@/lib/data/weight";
 import { getPhotos } from "@/lib/data/photos";
+import { getMeasurements, getMeasurementForDate } from "@/lib/data/measurements";
+import { getAllExerciseHistories } from "@/lib/data/workout";
+import { getExerciseName, TRACTION_KEYS } from "@/lib/program";
 import { todayISO, fromISO } from "@/lib/date";
-
-function Placeholder({ text }: { text: string }) {
-    return (
-        <div className="flex flex-col items-center gap-1 py-12 text-center">
-            <p className="text-muted-foreground text-sm">{text}</p>
-        </div>
-    );
-}
 
 async function PoidsSection() {
     const today = todayISO();
@@ -108,13 +105,34 @@ async function PhotosSection() {
     return <PhotosView today={todayISO()} photos={photos} />;
 }
 
+async function MensurationsSection() {
+    const today = todayISO();
+    const [measurements, initial] = await Promise.all([
+        getMeasurements(),
+        getMeasurementForDate(today),
+    ]);
+    return <MeasurementsView today={today} initial={initial} measurements={measurements} />;
+}
+
+async function HistoriqueSection() {
+    const histories = await getAllExerciseHistories();
+    const exercises = Object.keys(histories).map((key) => ({ key, name: getExerciseName(key) }));
+    return (
+        <PerfHistoryView
+            exercises={exercises}
+            histories={histories}
+            tractionKeys={TRACTION_KEYS}
+        />
+    );
+}
+
 export default async function SuiviPage() {
     return (
         <SuiviTabs
             poids={<PoidsSection />}
             photos={<PhotosSection />}
-            mensurations={<Placeholder text="Mensurations — arrive à l'étape 8." />}
-            historique={<Placeholder text="Historique des perfs — arrive à l'étape 8." />}
+            mensurations={<MensurationsSection />}
+            historique={<HistoriqueSection />}
         />
     );
 }

@@ -8,6 +8,7 @@ import { upsertWeight } from "@/lib/data/weight";
 import { setHabit, type HabitField } from "@/lib/data/habits";
 import { saveSetLog, setSessionCompleted } from "@/lib/data/workout";
 import { addPhoto, deletePhoto } from "@/lib/data/photos";
+import { upsertMeasurement } from "@/lib/data/measurements";
 import { POSES } from "@/lib/photos-meta";
 
 async function requireAuth() {
@@ -93,5 +94,22 @@ export async function deletePhotoAction(id: number) {
     await requireAuth();
     const parsed = z.number().int().positive().parse(id);
     await deletePhoto(parsed);
+    revalidatePath("/suivi");
+}
+
+const measure = z.number().min(0).max(300).nullable();
+const measurementSchema = z.object({
+    date: isoDate,
+    shoulders: measure,
+    chest: measure,
+    arm: measure,
+    waist: measure,
+    thigh: measure,
+});
+
+export async function upsertMeasurementAction(input: z.infer<typeof measurementSchema>) {
+    await requireAuth();
+    const { date, ...values } = measurementSchema.parse(input);
+    await upsertMeasurement(date, values);
     revalidatePath("/suivi");
 }

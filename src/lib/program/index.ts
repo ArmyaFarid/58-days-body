@@ -132,6 +132,32 @@ export const BLOC2_TECHNIQUES: { title: string; text: string }[] = [
     { title: "Échec complet", text: "Autorisé sur toutes les isolations." },
 ];
 
+export interface ExerciseRef {
+    key: string;
+    name: string;
+    lexiconKey: string;
+}
+
+/** Tous les exercices du catalogue, dédupliqués par clé. */
+export const ALL_EXERCISES: ExerciseRef[] = (() => {
+    const map = new Map<string, ExerciseRef>();
+    for (const session of Object.values(SESSIONS)) {
+        for (const ex of session.exercises) {
+            if (!map.has(ex.key)) {
+                map.set(ex.key, { key: ex.key, name: ex.name, lexiconKey: ex.lexiconKey });
+            }
+        }
+    }
+    return [...map.values()];
+})();
+
+export function getExerciseName(key: string): string {
+    return ALL_EXERCISES.find((e) => e.key === key)?.name ?? key;
+}
+
+/** Clés de tractions — pour le jalon « tractions strictes » (sans assistance). */
+export const TRACTION_KEYS = ["tractions-pronation", "tractions-neutre-supination", "pump-tractions"];
+
 /** Les 8 exercices clés — utilisés pour les illustrations SVG (étape 11). */
 export const KEY_EXERCISES: string[] = [
     "elevations-laterales",

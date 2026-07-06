@@ -118,3 +118,38 @@ export async function setSessionCompleted(sessionId: number, completed: boolean)
         .set({ completed, completedAt: completed ? new Date() : null })
         .where(eq(workoutSessions.id, sessionId));
 }
+
+export interface ExerciseHistoryEntry {
+    date: string;
+    sets: { setIndex: number; reps: number | null; band: string | null }[];
+}
+
+/**
+ * Historique de tous les exercices loggés, regroupé par clé puis par date
+ * (récent d'abord), en une seule requête.
+ */
+export async function getAllExerciseHistories(): Promise<Record<string, ExerciseHistoryEntry[]>> {
+    const rows = await db
+        .select({
+            date: workoutSessions.date,
+            exerciseKey: setLogs.exerciseKey,
+            setIndex: setLogs.setIndex,
+            reps: setLogs.reps,
+            band: setLogs.band,
+        })
+        .from(setLogs)
+        .innerJoin(workoutSessions, eq(setLogs.sessionId, workoutSessions.id))
+        .orderBy(desc(workoutSessions.date), setLogs.setIndex);
+
+    const result: Record<string, ExerciseHistoryEntry[]> = {};
+    for (const r of rows) {
+        const entries = (result[r.exerciseKey] ??= []);
+        let entry = entries.find((e) => e.date === r.date);
+        if (!entry) {
+            entry = { date: r.date, sets: [] };
+            entries.push(entry);
+        }
+        entry.sets.push({ setIndex: r.setIndex, reps: r.reps, band: r.band });
+    }
+    return result;
+}
