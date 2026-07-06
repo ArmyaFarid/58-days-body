@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Dumbbell, ChevronRight } from "lucide-react";
+import { Dumbbell, ChevronRight, Download } from "lucide-react";
 import {
     Accordion,
     AccordionItem,
@@ -189,6 +189,21 @@ export default function ProgrammePage() {
                     </AccordionContent>
                 </AccordionItem>
             </Accordion>
+
+            <a href="/api/export" download>
+                <Card className="transition-colors hover:bg-muted/50">
+                    <CardContent className="flex items-center gap-3 py-4">
+                        <Download className="text-primary size-5" />
+                        <div className="flex-1">
+                            <p className="font-medium">Exporter mes données</p>
+                            <p className="text-muted-foreground text-sm">
+                                Télécharge tout ton historique en JSON.
+                            </p>
+                        </div>
+                        <ChevronRight className="text-muted-foreground size-4" />
+                    </CardContent>
+                </Card>
+            </a>
         </div>
     );
 }
