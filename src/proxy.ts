@@ -4,8 +4,10 @@ import { jwtVerify } from "jose";
 async function isValidSession(token: string | undefined): Promise<boolean> {
     if (!token) return false;
     try {
-        await jwtVerify(token, new TextEncoder().encode(process.env.AUTH_SECRET));
-        return true;
+        const { payload } = await jwtVerify(token, new TextEncoder().encode(process.env.AUTH_SECRET));
+        // Doit correspondre à getSession() : un cookie sans userId (ancien format)
+        // est invalide, sinon boucle de redirection / ⇄ /login.
+        return typeof payload.uid === "number";
     } catch {
         return false;
     }
