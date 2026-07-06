@@ -3,8 +3,10 @@ import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { QuickWeight } from "@/components/quick-weight";
 import { WeightChart, type WeightPoint } from "@/components/tracking/weight-chart";
+import { PhotosView } from "@/components/tracking/photos-view";
 import { SuiviTabs } from "./suivi-tabs";
 import { getWeights, getWeightForDate, computeWeeklyAverages, computeTrend } from "@/lib/data/weight";
+import { getPhotos } from "@/lib/data/photos";
 import { todayISO, fromISO } from "@/lib/date";
 
 function Placeholder({ text }: { text: string }) {
@@ -101,11 +103,16 @@ async function PoidsSection() {
     );
 }
 
+async function PhotosSection() {
+    const photos = await getPhotos();
+    return <PhotosView today={todayISO()} photos={photos} />;
+}
+
 export default async function SuiviPage() {
     return (
         <SuiviTabs
             poids={<PoidsSection />}
-            photos={<Placeholder text="Photos — arrive à l'étape 7." />}
+            photos={<PhotosSection />}
             mensurations={<Placeholder text="Mensurations — arrive à l'étape 8." />}
             historique={<Placeholder text="Historique des perfs — arrive à l'étape 8." />}
         />

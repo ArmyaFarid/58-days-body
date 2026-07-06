@@ -18,16 +18,16 @@ export function SuiviTabs({ poids, photos, mensurations, historique }: SuiviTabs
                 <TabsTrigger value="mensurations">Mensur.</TabsTrigger>
                 <TabsTrigger value="historique">Perf</TabsTrigger>
             </TabsList>
-            <TabsContent value="poids" className="pt-4">
+            <TabsContent value="poids" className="pt-4" keepMounted>
                 {poids}
             </TabsContent>
-            <TabsContent value="photos" className="pt-4">
+            <TabsContent value="photos" className="pt-4" keepMounted>
                 {photos}
             </TabsContent>
-            <TabsContent value="mensurations" className="pt-4">
+            <TabsContent value="mensurations" className="pt-4" keepMounted>
                 {mensurations}
             </TabsContent>
-            <TabsContent value="historique" className="pt-4">
+            <TabsContent value="historique" className="pt-4" keepMounted>
                 {historique}
             </TabsContent>
         </Tabs>
