@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { Camera, Loader2, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { POSES, poseLabel } from "@/lib/photos-meta";
 import { deletePhotoAction } from "@/lib/actions";
@@ -24,6 +26,7 @@ export function PhotosView({ today, photos }: PhotosViewProps) {
     const poseRef = useRef<string>(POSES[0].key);
     const [uploading, setUploading] = useState(false);
     const [comparePose, setComparePose] = useState(POSES[0].key);
+    const [date, setDate] = useState(today);
 
     function pick(pose: string) {
         poseRef.current = pose;
@@ -44,7 +47,7 @@ export function PhotosView({ today, photos }: PhotosViewProps) {
                 useWebWorker: true,
                 fileType: "image/jpeg",
             });
-            const params = new URLSearchParams({ pose: poseRef.current, date: today });
+            const params = new URLSearchParams({ pose: poseRef.current, date });
             const res = await fetch(`/api/photos/upload?${params}`, {
                 method: "POST",
                 headers: { "Content-Type": "image/jpeg" },
@@ -97,8 +100,22 @@ export function PhotosView({ today, photos }: PhotosViewProps) {
                 <CardHeader>
                     <CardTitle className="text-base">Ajouter une photo</CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-2">
-                    {POSES.map((p) => (
+                <CardContent className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="photo-date" className="text-xs">
+                            Date
+                        </Label>
+                        <Input
+                            id="photo-date"
+                            type="date"
+                            max={today}
+                            value={date}
+                            onChange={(e) => setDate(e.target.value)}
+                            className="h-10"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        {POSES.map((p) => (
                         <Button
                             key={p.key}
                             variant="outline"
@@ -113,7 +130,8 @@ export function PhotosView({ today, photos }: PhotosViewProps) {
                             )}
                             {p.label}
                         </Button>
-                    ))}
+                        ))}
+                    </div>
                 </CardContent>
             </Card>
 

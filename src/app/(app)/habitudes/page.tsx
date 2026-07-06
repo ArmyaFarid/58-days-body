@@ -2,6 +2,7 @@ import { subDays, format, parseISO } from "date-fns";
 import { Flame } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HabitChecklist } from "@/components/habit-checklist";
+import { HabitHistoryGrid } from "@/components/habit-history-grid";
 import { getHabit, getAllHabits } from "@/lib/data/habits";
 import { HABIT_META } from "@/lib/habits-meta";
 import { todayISO } from "@/lib/date";
@@ -86,27 +87,18 @@ export default async function HabitudesPage() {
                     <CardTitle className="text-base">14 derniers jours</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-2">
-                    {HABIT_META.map((h) => (
-                        <div key={h.field} className="flex items-center gap-2">
-                            <span className="text-muted-foreground w-16 shrink-0 text-xs">
-                                {h.short}
-                            </span>
-                            <div className="flex flex-1 gap-1">
-                                {last14.map((d) => (
-                                    <span
-                                        key={d}
-                                        title={d}
-                                        className={cn(
-                                            "h-4 flex-1 rounded-sm",
-                                            trueSets[h.field].has(d)
-                                                ? "bg-primary"
-                                                : "bg-muted",
-                                        )}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    ))}
+                    <HabitHistoryGrid
+                        days={last14}
+                        trueDates={{
+                            creatine: [...trueSets.creatine],
+                            kcal3000: [...trueSets.kcal3000],
+                            protein140: [...trueSets.protein140],
+                            sleepBefore23: [...trueSets.sleepBefore23],
+                        }}
+                    />
+                    <p className="text-muted-foreground text-xs">
+                        Touche une case pour cocher/décocher un jour passé.
+                    </p>
                 </CardContent>
             </Card>
         </div>

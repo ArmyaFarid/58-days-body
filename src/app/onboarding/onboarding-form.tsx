@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { setStartDateAction } from "@/lib/actions";
+import { setStartDateAction, upsertWeightAction } from "@/lib/actions";
 
 const schema = z.object({
     startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date requise"),
+    weight: z.string().optional(),
 });
 
 type Values = z.infer<typeof schema>;
@@ -26,16 +27,20 @@ export function OnboardingForm({ defaultDate }: { defaultDate: string }) {
         formState: { errors, isSubmitting },
     } = useForm<Values>({
         resolver: zodResolver(schema),
-        defaultValues: { startDate: defaultDate },
+        defaultValues: { startDate: defaultDate, weight: "" },
     });
 
     async function onSubmit(values: Values) {
         try {
             await setStartDateAction(values.startDate);
+            const kg = values.weight ? parseFloat(values.weight.replace(",", ".")) : NaN;
+            if (Number.isFinite(kg) && kg > 0) {
+                await upsertWeightAction(values.startDate, kg);
+            }
             router.replace("/");
             router.refresh();
         } catch {
-            toast.error("Impossible d'enregistrer la date.");
+            toast.error("Impossible d'enregistrer.");
         }
     }
 
@@ -66,6 +71,22 @@ export function OnboardingForm({ defaultDate }: { defaultDate: string }) {
                                 <p className="text-destructive text-sm">{errors.startDate.message}</p>
                             ) : null}
                         </div>
+                        <div className="flex flex-col gap-1.5">
+                            <Label htmlFor="weight">Poids du jour 1 (optionnel)</Label>
+                            <Input
+                                id="weight"
+                                type="number"
+                                inputMode="decimal"
+                                step="0.1"
+                                placeholder="kg"
+                                className="h-11"
+                                {...register("weight")}
+                            />
+                        </div>
+                        <p className="text-muted-foreground text-xs">
+                            Pense à prendre tes photos du jour 1 : tu les ajouteras dans Suivi →
+                            Photos (tu peux choisir la date).
+                        </p>
                         <Button type="submit" className="h-11 w-full" disabled={isSubmitting}>
                             {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : "Commencer"}
                         </Button>

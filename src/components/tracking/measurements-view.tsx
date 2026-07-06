@@ -47,6 +47,7 @@ export function MeasurementsView({ today, initial, measurements }: MeasurementsV
         thigh: initial?.thigh != null ? String(initial.thigh) : "",
     }));
     const [metric, setMetric] = useState<MetricKey>("shoulders");
+    const [day, setDay] = useState(today);
     const [pending, startTransition] = useTransition();
 
     function parse(v: string): number | null {
@@ -58,7 +59,7 @@ export function MeasurementsView({ today, initial, measurements }: MeasurementsV
         startTransition(async () => {
             try {
                 await upsertMeasurementAction({
-                    date: today,
+                    date: day,
                     shoulders: parse(values.shoulders),
                     chest: parse(values.chest),
                     arm: parse(values.arm),
@@ -84,6 +85,19 @@ export function MeasurementsView({ today, initial, measurements }: MeasurementsV
                     <CardTitle className="text-base">Saisie (cm) — aux 2 semaines</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="measure-date" className="text-xs">
+                            Date
+                        </Label>
+                        <Input
+                            id="measure-date"
+                            type="date"
+                            max={today}
+                            value={day}
+                            onChange={(e) => setDay(e.target.value)}
+                            className="h-10"
+                        />
+                    </div>
                     <div className="grid grid-cols-2 gap-3">
                         {METRICS.map((m) => (
                             <div key={m.key} className="flex flex-col gap-1">

@@ -2,13 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getSession } from "@/lib/auth";
+import bcrypt from "bcryptjs";
+import { getSession, verifyCredentials } from "@/lib/auth";
 import { setStartDate } from "@/lib/data/settings";
 import { upsertWeight } from "@/lib/data/weight";
 import { setHabit, type HabitField } from "@/lib/data/habits";
 import { saveSetLog, setSessionCompleted } from "@/lib/data/workout";
 import { deletePhoto } from "@/lib/data/photos";
 import { upsertMeasurement } from "@/lib/data/measurements";
+import { setStoredPasswordHashB64 } from "@/lib/data/credentials";
+import { resetAllData } from "@/lib/data/reset";
 
 async function requireAuth() {
     const session = await getSession();
@@ -96,4 +99,28 @@ export async function upsertMeasurementAction(input: z.infer<typeof measurementS
     const { date, ...values } = measurementSchema.parse(input);
     await upsertMeasurement(date, values);
     revalidatePath("/suivi");
+}
+
+export async function changePasswordAction(current: string, next: string) {
+    await requireAuth();
+    const username = process.env.AUTH_USERNAME ?? "";
+    const ok = await verifyCredentials(username, current);
+    if (!ok) throw new Error("Mot de passe actuel incorrect.");
+    const newPassword = z
+        .string()
+        .min(4, "Minimum 4 caractères.")
+        .max(200)
+        .parse(next);
+    const hash = bcrypt.hashSync(newPassword, 10);
+    const b64 = Buffer.from(hash, "utf8").toString("base64");
+    await setStoredPasswordHashB64(b64);
+}
+
+export async function resetAllAction() {
+    await requireAuth();
+    await resetAllData();
+    revalidatePath("/");
+    revalidatePath("/suivi");
+    revalidatePath("/habitudes");
+    revalidatePath("/seance");
 }

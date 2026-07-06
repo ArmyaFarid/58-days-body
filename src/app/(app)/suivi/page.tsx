@@ -35,10 +35,10 @@ async function PoidsSection() {
         <div className="flex flex-col gap-4">
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-base">Pesée du jour</CardTitle>
+                    <CardTitle className="text-base">Ajouter une pesée</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <QuickWeight date={today} initial={todayWeight} />
+                    <QuickWeight date={today} initial={todayWeight} allowDateChange />
                 </CardContent>
             </Card>
 
@@ -126,9 +126,15 @@ async function HistoriqueSection() {
     );
 }
 
-export default async function SuiviPage() {
+export default async function SuiviPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ tab?: string }>;
+}) {
+    const { tab } = await searchParams;
     return (
         <SuiviTabs
+            initialTab={tab}
             poids={<PoidsSection />}
             photos={<PhotosSection />}
             mensurations={<MensurationsSection />}

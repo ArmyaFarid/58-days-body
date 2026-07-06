@@ -2,6 +2,7 @@ import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
+import { getStoredPasswordHashB64 } from "@/lib/data/credentials";
 
 const COOKIE_NAME = "session";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 jours
@@ -16,7 +17,9 @@ export async function verifyCredentials(username: string, password: string): Pro
     if (!username || !password) return false;
     if (username !== process.env.AUTH_USERNAME) return false;
 
-    const hashB64 = process.env.AUTH_PASSWORD_HASH_B64;
+    // Un mot de passe changé depuis l'app (stocké en base) prime sur l'env.
+    const dbHash = await getStoredPasswordHashB64();
+    const hashB64 = dbHash ?? process.env.AUTH_PASSWORD_HASH_B64;
     if (hashB64) {
         const hash = Buffer.from(hashB64, "base64").toString("utf8");
         return bcrypt.compare(password, hash);

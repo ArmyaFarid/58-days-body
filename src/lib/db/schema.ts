@@ -16,6 +16,12 @@ export const settings = pgTable("settings", {
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Mot de passe changé depuis l'app (prioritaire sur AUTH_PASSWORD_HASH_B64).
+export const credentials = pgTable("credentials", {
+    id: serial("id").primaryKey(),
+    passwordHashB64: text("password_hash_b64").notNull(),
+});
+
 export const weightLogs = pgTable("weight_logs", {
     id: serial("id").primaryKey(),
     date: date("date").notNull().unique(),
