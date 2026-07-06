@@ -109,8 +109,15 @@ export default async function DashboardPage() {
 
             {/* À faire aujourd'hui */}
             <Card>
-                <CardHeader>
+                <CardHeader className="flex-row items-center justify-between">
                     <CardTitle className="text-base">À faire aujourd&apos;hui</CardTitle>
+                    <Link
+                        href="/habitudes"
+                        className="text-muted-foreground flex items-center text-sm"
+                    >
+                        Séries
+                        <ChevronRight className="size-4" />
+                    </Link>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
                     <div>

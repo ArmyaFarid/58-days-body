@@ -5,14 +5,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
 import { setHabitAction } from "@/lib/actions";
+import { HABIT_META } from "@/lib/habits-meta";
 import type { HabitDay, HabitField } from "@/lib/data/habits";
-
-const LABELS: { field: HabitField; label: string }[] = [
-    { field: "creatine", label: "Créatine 5 g" },
-    { field: "kcal3000", label: "3 000 kcal" },
-    { field: "protein140", label: "140 g protéines" },
-    { field: "sleepBefore23", label: "Couché avant 23 h" },
-];
 
 interface HabitChecklistProps {
     date: string;
@@ -38,7 +32,7 @@ export function HabitChecklist({ date, initial }: HabitChecklistProps) {
 
     return (
         <ul className="flex flex-col gap-2">
-            {LABELS.map(({ field, label }) => {
+            {HABIT_META.map(({ field, label }) => {
                 const done = state[field];
                 return (
                     <li key={field}>
