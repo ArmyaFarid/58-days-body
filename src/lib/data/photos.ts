@@ -16,6 +16,12 @@ export async function getPhotos(): Promise<Photo[]> {
     return rows.map((r) => ({ id: r.id, date: r.date, pose: r.pose, blobUrl: r.blobUrl }));
 }
 
+export async function getPhotoById(id: number): Promise<Photo | null> {
+    const rows = await db.select().from(photos).where(eq(photos.id, id)).limit(1);
+    const r = rows[0];
+    return r ? { id: r.id, date: r.date, pose: r.pose, blobUrl: r.blobUrl } : null;
+}
+
 export async function addPhoto(date: string, pose: string, blobUrl: string): Promise<void> {
     await db.insert(photos).values({ date, pose, blobUrl });
 }

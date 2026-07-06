@@ -141,11 +141,14 @@ export function PhotosView({ today, photos }: PhotosViewProps) {
                         </div>
                         {first ? (
                             <div className="grid grid-cols-2 gap-2">
-                                <Figure label={`Jour 1 · ${formatShort(first.date)}`} url={first.blobUrl} />
+                                <Figure
+                                    label={`Jour 1 · ${formatShort(first.date)}`}
+                                    url={`/api/photos/${first.id}`}
+                                />
                                 {last && last.id !== first.id ? (
                                     <Figure
                                         label={`Dernière · ${formatShort(last.date)}`}
-                                        url={last.blobUrl}
+                                        url={`/api/photos/${last.id}`}
                                     />
                                 ) : (
                                     <div className="text-muted-foreground flex items-center justify-center rounded-lg border border-dashed text-center text-xs">
@@ -173,7 +176,7 @@ export function PhotosView({ today, photos }: PhotosViewProps) {
                                 .filter((p) => p.date === date)
                                 .map((p) => (
                                     <div key={p.id} className="group relative">
-                                        <Figure label={poseLabel(p.pose)} url={p.blobUrl} />
+                                        <Figure label={poseLabel(p.pose)} url={`/api/photos/${p.id}`} />
                                         <button
                                             onClick={() => onDelete(p.id)}
                                             className="bg-background/80 absolute right-1.5 top-1.5 rounded-md p-1.5 backdrop-blur"

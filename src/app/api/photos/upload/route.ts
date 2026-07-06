@@ -2,17 +2,10 @@ import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { getSession } from "@/lib/auth";
 import { addPhoto } from "@/lib/data/photos";
+import { getBlobToken } from "@/lib/blob-token";
 import { POSES } from "@/lib/photos-meta";
 
 export const runtime = "nodejs";
-
-// Retourne le token Blob, en tolérant un préfixe éventuel choisi lors de la
-// connexion du store (ex. MONPREFIXE_BLOB_READ_WRITE_TOKEN).
-function getBlobToken(): string | undefined {
-    if (process.env.BLOB_READ_WRITE_TOKEN) return process.env.BLOB_READ_WRITE_TOKEN;
-    const key = Object.keys(process.env).find((k) => k.endsWith("BLOB_READ_WRITE_TOKEN"));
-    return key ? process.env[key] : undefined;
-}
 
 // Upload côté serveur, corps brut (pas de multipart) : le navigateur envoie
 // l'image compressée en corps de requête, pose/date en paramètres d'URL. La
@@ -53,7 +46,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     try {
         const blob = await put(`photos/${date}-${pose}.jpg`, Buffer.from(bytes), {
-            access: "public",
+            access: "private",
             contentType: "image/jpeg",
             addRandomSuffix: true,
             token,
