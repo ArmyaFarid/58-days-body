@@ -7,9 +7,8 @@ import { setStartDate } from "@/lib/data/settings";
 import { upsertWeight } from "@/lib/data/weight";
 import { setHabit, type HabitField } from "@/lib/data/habits";
 import { saveSetLog, setSessionCompleted } from "@/lib/data/workout";
-import { addPhoto, deletePhoto } from "@/lib/data/photos";
+import { deletePhoto } from "@/lib/data/photos";
 import { upsertMeasurement } from "@/lib/data/measurements";
-import { POSES } from "@/lib/photos-meta";
 
 async function requireAuth() {
     const session = await getSession();
@@ -73,21 +72,6 @@ export async function completeSessionAction(sessionId: number, completed: boolea
     await setSessionCompleted(id, Boolean(completed));
     revalidatePath("/seance");
     revalidatePath("/");
-}
-
-const poseKeys = POSES.map((p) => p.key) as [string, ...string[]];
-
-const addPhotoSchema = z.object({
-    date: isoDate,
-    pose: z.enum(poseKeys),
-    blobUrl: z.string().url().startsWith("https://"),
-});
-
-export async function addPhotoAction(input: z.infer<typeof addPhotoSchema>) {
-    await requireAuth();
-    const parsed = addPhotoSchema.parse(input);
-    await addPhoto(parsed.date, parsed.pose, parsed.blobUrl);
-    revalidatePath("/suivi");
 }
 
 export async function deletePhotoAction(id: number) {

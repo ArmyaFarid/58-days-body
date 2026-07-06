@@ -3,14 +3,13 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import imageCompression from "browser-image-compression";
-import { upload } from "@vercel/blob/client";
 import { toast } from "sonner";
 import { Camera, Loader2, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { POSES, poseLabel } from "@/lib/photos-meta";
-import { addPhotoAction, deletePhotoAction } from "@/lib/actions";
+import { deletePhotoAction } from "@/lib/actions";
 import { formatShort } from "@/lib/date";
 import type { Photo } from "@/lib/data/photos";
 
@@ -45,12 +44,15 @@ export function PhotosView({ today, photos }: PhotosViewProps) {
                 useWebWorker: true,
                 fileType: "image/jpeg",
             });
-            const filename = `photos/${today}-${poseRef.current}-${Date.now()}.jpg`;
-            const blob = await upload(filename, compressed, {
-                access: "public",
-                handleUploadUrl: "/api/photos/upload",
-            });
-            await addPhotoAction({ date: today, pose: poseRef.current, blobUrl: blob.url });
+            const form = new FormData();
+            form.append("file", compressed, "photo.jpg");
+            form.append("pose", poseRef.current);
+            form.append("date", today);
+            const res = await fetch("/api/photos/upload", { method: "POST", body: form });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error ?? `Erreur ${res.status}`);
+            }
             toast.success("Photo ajoutée.");
             router.refresh();
         } catch (err) {
