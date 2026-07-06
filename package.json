@@ -10,6 +10,7 @@
     "hash-password": "node scripts/hash-password.mjs",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
+    "db:reset": "node scripts/db-reset.mjs && drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
