@@ -14,9 +14,9 @@ export function LogoutButton() {
     }
 
     return (
-        <Button variant="outline" onClick={onLogout}>
+        <Button variant="ghost" size="sm" onClick={onLogout} className="text-muted-foreground">
             <LogOut className="size-4" />
-            Se déconnecter
+            Quitter
         </Button>
     );
 }
