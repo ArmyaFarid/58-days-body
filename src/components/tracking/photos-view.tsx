@@ -37,13 +37,15 @@ export function PhotosView({ today, photos }: PhotosViewProps) {
         if (!file) return;
         setUploading(true);
         try {
+            // Force le JPEG : évite les soucis de HEIC (iPhone) et garantit un
+            // type accepté par la route d'upload.
             const compressed = await imageCompression(file, {
                 maxSizeMB: 0.4,
                 maxWidthOrHeight: 1600,
                 useWebWorker: true,
+                fileType: "image/jpeg",
             });
-            const ext = compressed.type.split("/")[1] || "jpg";
-            const filename = `photos/${today}-${poseRef.current}-${Date.now()}.${ext}`;
+            const filename = `photos/${today}-${poseRef.current}-${Date.now()}.jpg`;
             const blob = await upload(filename, compressed, {
                 access: "public",
                 handleUploadUrl: "/api/photos/upload",
@@ -51,8 +53,9 @@ export function PhotosView({ today, photos }: PhotosViewProps) {
             await addPhotoAction({ date: today, pose: poseRef.current, blobUrl: blob.url });
             toast.success("Photo ajoutée.");
             router.refresh();
-        } catch {
-            toast.error("Upload impossible (token Blob configuré ?).");
+        } catch (err) {
+            console.error("Upload photo:", err);
+            toast.error(err instanceof Error ? err.message : "Upload impossible.");
         } finally {
             setUploading(false);
         }
