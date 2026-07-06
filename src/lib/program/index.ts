@@ -71,6 +71,13 @@ export function getSession(dayType: DayType) {
     return SESSIONS[dayType];
 }
 
+/** Nombre de séries à logger, dérivé du champ `sets` (« 4 », « 3 tours »…). */
+export function parseSetCount(sets: string): number {
+    const m = sets.match(/^\d+/);
+    const n = m ? parseInt(m[0], 10) : 3;
+    return Math.min(8, Math.max(1, n));
+}
+
 /** En délestage, seuls Poussée A, Tirage A et Poussée B sont travaillés. */
 const DELESTAGE_DAYTYPES: DayType[] = ["poussee-a", "tirage-a", "poussee-b"];
 

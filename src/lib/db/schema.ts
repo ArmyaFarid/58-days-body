@@ -7,6 +7,7 @@ import {
     timestamp,
     date,
     real,
+    unique,
 } from "drizzle-orm/pg-core";
 
 export const settings = pgTable("settings", {
@@ -30,18 +31,22 @@ export const workoutSessions = pgTable("workout_sessions", {
     completedAt: timestamp("completed_at"),
 });
 
-export const setLogs = pgTable("set_logs", {
-    id: serial("id").primaryKey(),
-    sessionId: integer("session_id")
-        .notNull()
-        .references(() => workoutSessions.id, { onDelete: "cascade" }),
-    exerciseKey: text("exercise_key").notNull(),
-    setIndex: integer("set_index").notNull(),
-    reps: integer("reps"),
-    band: text("band"),
-    variant: text("variant"),
-    notes: text("notes"),
-});
+export const setLogs = pgTable(
+    "set_logs",
+    {
+        id: serial("id").primaryKey(),
+        sessionId: integer("session_id")
+            .notNull()
+            .references(() => workoutSessions.id, { onDelete: "cascade" }),
+        exerciseKey: text("exercise_key").notNull(),
+        setIndex: integer("set_index").notNull(),
+        reps: integer("reps"),
+        band: text("band"),
+        variant: text("variant"),
+        notes: text("notes"),
+    },
+    (t) => [unique("set_logs_session_exercise_set").on(t.sessionId, t.exerciseKey, t.setIndex)],
+);
 
 export const habitLogs = pgTable("habit_logs", {
     id: serial("id").primaryKey(),

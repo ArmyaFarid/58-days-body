@@ -6,6 +6,7 @@ import { getSession } from "@/lib/auth";
 import { setStartDate } from "@/lib/data/settings";
 import { upsertWeight } from "@/lib/data/weight";
 import { setHabit, type HabitField } from "@/lib/data/habits";
+import { saveSetLog, setSessionCompleted } from "@/lib/data/workout";
 
 async function requireAuth() {
     const session = await getSession();
@@ -44,4 +45,29 @@ export async function setHabitAction(date: string, field: HabitField, value: boo
     await setHabit(parsedDate, parsedField, value);
     revalidatePath("/");
     revalidatePath("/suivi");
+}
+
+const setLogSchema = z.object({
+    sessionId: z.number().int().positive(),
+    exerciseKey: z.string().min(1).max(64),
+    setIndex: z.number().int().min(0).max(20),
+    reps: z.number().int().min(0).max(999).nullable(),
+    band: z.string().max(64).nullable(),
+    variant: z.string().max(64).nullable(),
+    notes: z.string().max(280).nullable(),
+});
+
+export async function saveSetLogAction(input: z.infer<typeof setLogSchema>) {
+    await requireAuth();
+    const parsed = setLogSchema.parse(input);
+    await saveSetLog(parsed);
+    revalidatePath("/seance");
+}
+
+export async function completeSessionAction(sessionId: number, completed: boolean) {
+    await requireAuth();
+    const id = z.number().int().positive().parse(sessionId);
+    await setSessionCompleted(id, Boolean(completed));
+    revalidatePath("/seance");
+    revalidatePath("/");
 }
