@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { RegisterSW } from "@/components/register-sw";
 import { ThemeProvider } from "@/components/theme-provider";
 
-const geistSans = Geist({
-    variable: "--font-geist-sans",
+const inter = Inter({
+    variable: "--font-inter",
     subsets: ["latin"],
 });
 
@@ -45,7 +45,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="fr" suppressHydrationWarning className={`${geistSans.variable} h-full antialiased`}>
+        <html lang="fr" suppressHydrationWarning className={`${inter.variable} h-full antialiased`}>
             <body className="bg-background text-foreground flex min-h-full flex-col">
                 <script dangerouslySetInnerHTML={{ __html: sizeScript }} />
                 <ThemeProvider
