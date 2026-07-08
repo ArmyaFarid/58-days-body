@@ -91,7 +91,6 @@ export function PhotosView({ today, photos }: PhotosViewProps) {
                 ref={fileRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
                 onChange={onFile}
                 className="hidden"
             />
