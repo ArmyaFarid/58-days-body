@@ -10,6 +10,7 @@ import { SuiviTabs } from "./suivi-tabs";
 import { getSession } from "@/lib/auth";
 import { getWeights, getWeightForDate, computeWeeklyAverages, computeTrend } from "@/lib/data/weight";
 import { getPhotos } from "@/lib/data/photos";
+import { getStartDate } from "@/lib/data/settings";
 import { getMeasurements, getMeasurementForDate } from "@/lib/data/measurements";
 import { getAllExerciseHistories } from "@/lib/data/workout";
 import { getExerciseName, TRACTION_KEYS } from "@/lib/program";
@@ -105,8 +106,8 @@ async function PoidsSection({ userId }: { userId: number }) {
 }
 
 async function PhotosSection({ userId }: { userId: number }) {
-    const photos = await getPhotos(userId);
-    return <PhotosView today={todayISO()} photos={photos} />;
+    const [photos, startDate] = await Promise.all([getPhotos(userId), getStartDate(userId)]);
+    return <PhotosView today={todayISO()} startDate={startDate} photos={photos} />;
 }
 
 async function MensurationsSection({ userId }: { userId: number }) {

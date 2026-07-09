@@ -12,15 +12,24 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { POSES, poseLabel } from "@/lib/photos-meta";
 import { deletePhotoAction } from "@/lib/actions";
-import { formatShort } from "@/lib/date";
+import { differenceInCalendarDays } from "date-fns";
+import { formatShort, fromISO } from "@/lib/date";
 import type { Photo } from "@/lib/data/photos";
 
 interface PhotosViewProps {
     today: string;
+    startDate: string | null;
     photos: Photo[];
 }
 
-export function PhotosView({ today, photos }: PhotosViewProps) {
+// Libellé d'une photo : jour réel du programme (dérivé de la date de début) + date.
+function photoLabel(startDate: string | null, date: string): string {
+    if (!startDate) return formatShort(date);
+    const day = differenceInCalendarDays(fromISO(date), fromISO(startDate)) + 1;
+    return day >= 1 ? `Jour ${day} · ${formatShort(date)}` : formatShort(date);
+}
+
+export function PhotosView({ today, startDate, photos }: PhotosViewProps) {
     const router = useRouter();
     const fileRef = useRef<HTMLInputElement>(null);
     const poseRef = useRef<string>(POSES[0].key);
@@ -159,12 +168,12 @@ export function PhotosView({ today, photos }: PhotosViewProps) {
                         {first ? (
                             <div className="grid grid-cols-2 gap-2">
                                 <Figure
-                                    label={`Jour 1 · ${formatShort(first.date)}`}
+                                    label={photoLabel(startDate, first.date)}
                                     url={`/api/photos/${first.id}`}
                                 />
                                 {last && last.id !== first.id ? (
                                     <Figure
-                                        label={`Dernière · ${formatShort(last.date)}`}
+                                        label={photoLabel(startDate, last.date)}
                                         url={`/api/photos/${last.id}`}
                                     />
                                 ) : (
