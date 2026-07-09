@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Dumbbell, ChevronRight, TrendingUp, TrendingDown, Minus, Scale } from "lucide-react";
+import { Dumbbell, ChevronRight, TrendingUp, TrendingDown, Minus, Scale, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -10,6 +10,7 @@ import { getSession as getAuthSession } from "@/lib/auth";
 import { getStartDate } from "@/lib/data/settings";
 import { getWeights, getWeightForDate, computeTrend } from "@/lib/data/weight";
 import { getHabit } from "@/lib/data/habits";
+import { getSessionForDate } from "@/lib/data/workout";
 import { todayISO, fromISO, formatShort } from "@/lib/date";
 import {
     getDayNumber,
@@ -30,12 +31,14 @@ export default async function DashboardPage() {
     const session = getSession(dayType);
     const training = isTrainingDay(dayType, phase?.key ?? null);
 
-    const [weights, todayWeight, habit] = await Promise.all([
+    const [weights, todayWeight, habit, workoutSession] = await Promise.all([
         getWeights(userId),
         getWeightForDate(userId, today),
         getHabit(userId, today),
+        getSessionForDate(userId, today),
     ]);
     const trend = computeTrend(weights);
+    const sessionDone = workoutSession?.completed === true;
 
     const beforeStart = dayNumber < 1;
     const finished = dayNumber > PROGRAM_LENGTH;
@@ -91,10 +94,27 @@ export default async function DashboardPage() {
                                 <p className="text-xl font-semibold">{session.title}</p>
                                 <p className="text-muted-foreground text-sm">{session.focus}</p>
                             </div>
-                            <Button render={<Link href="/seance" />} className="h-11">
-                                Démarrer la séance
-                                <ChevronRight className="size-4" />
-                            </Button>
+                            {sessionDone ? (
+                                <>
+                                    <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 p-3 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                                        <CheckCircle2 className="size-4 shrink-0" />
+                                        Séance complétée aujourd&apos;hui 💪
+                                    </div>
+                                    <Button
+                                        render={<Link href="/seance" />}
+                                        variant="outline"
+                                        className="h-11"
+                                    >
+                                        Revoir la séance
+                                        <ChevronRight className="size-4" />
+                                    </Button>
+                                </>
+                            ) : (
+                                <Button render={<Link href="/seance" />} className="h-11">
+                                    Démarrer la séance
+                                    <ChevronRight className="size-4" />
+                                </Button>
+                            )}
                         </>
                     ) : (
                         <div>

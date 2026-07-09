@@ -43,6 +43,21 @@ export async function getOrCreateSession(
     return { id: r.id, date: r.date, dayType: r.dayType, phase: r.phase, completed: r.completed };
 }
 
+/** Lecture seule : la séance du jour si elle existe déjà (sans la créer). */
+export async function getSessionForDate(
+    userId: number,
+    date: string,
+): Promise<WorkoutSession | null> {
+    const rows = await db
+        .select()
+        .from(workoutSessions)
+        .where(and(eq(workoutSessions.userId, userId), eq(workoutSessions.date, date)))
+        .limit(1);
+    const r = rows[0];
+    if (!r) return null;
+    return { id: r.id, date: r.date, dayType: r.dayType, phase: r.phase, completed: r.completed };
+}
+
 export async function getSetLogsForSession(sessionId: number): Promise<SetLog[]> {
     const rows = await db.select().from(setLogs).where(eq(setLogs.sessionId, sessionId));
     return rows.map((r) => ({
