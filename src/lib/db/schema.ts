@@ -25,6 +25,9 @@ export const settings = pgTable("settings", {
     id: serial("id").primaryKey(),
     userId: userRef().unique(),
     startDate: date("start_date").notNull(),
+    // Objectifs nutrition (nullable : NULL ⇒ défauts applicatifs 140 g / 3000 kcal).
+    proteinGoal: integer("protein_goal"),
+    calorieGoal: integer("calorie_goal"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -82,6 +85,20 @@ export const habitLogs = pgTable(
         sleepBefore23: boolean("sleep_before_23").default(false).notNull(),
     },
     (t) => [unique("habit_logs_user_date").on(t.userId, t.date)],
+);
+
+// Portions d'aliments consommées, indexées par jour. Reset « à minuit » implicite
+// (nouvelle date = nouvelles lignes) ; l'historique quotidien reste conservé.
+export const foodLogs = pgTable(
+    "food_logs",
+    {
+        id: serial("id").primaryKey(),
+        userId: userRef(),
+        date: date("date").notNull(),
+        foodKey: text("food_key").notNull(),
+        portions: integer("portions").notNull().default(0),
+    },
+    (t) => [unique("food_logs_user_date_food").on(t.userId, t.date, t.foodKey)],
 );
 
 export const photos = pgTable("photos", {

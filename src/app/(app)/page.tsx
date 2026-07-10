@@ -1,16 +1,22 @@
 import Link from "next/link";
-import { Dumbbell, ChevronRight, TrendingUp, TrendingDown, Minus, Scale, CheckCircle2 } from "lucide-react";
+import { Dumbbell, ChevronRight, TrendingUp, TrendingDown, Minus, Scale, CheckCircle2, UtensilsCrossed } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { QuickWeight } from "@/components/quick-weight";
 import { HabitChecklist } from "@/components/habit-checklist";
+import { NutritionTracker } from "@/components/nutrition/nutrition-tracker";
 import { getSession as getAuthSession } from "@/lib/auth";
-import { getStartDate } from "@/lib/data/settings";
+import { getStartDate, getNutritionGoals } from "@/lib/data/settings";
 import { getWeights, getWeightForDate, computeTrend } from "@/lib/data/weight";
 import { getHabit } from "@/lib/data/habits";
 import { getSessionForDate } from "@/lib/data/workout";
+import {
+    getFoodPortions,
+    getFrequentFoodKeys,
+    getNutritionHistory,
+} from "@/lib/data/nutrition";
 import { todayISO, fromISO, formatShort } from "@/lib/date";
 import {
     getDayNumber,
@@ -31,12 +37,17 @@ export default async function DashboardPage() {
     const session = getSession(dayType);
     const training = isTrainingDay(dayType, phase?.key ?? null);
 
-    const [weights, todayWeight, habit, workoutSession] = await Promise.all([
-        getWeights(userId),
-        getWeightForDate(userId, today),
-        getHabit(userId, today),
-        getSessionForDate(userId, today),
-    ]);
+    const [weights, todayWeight, habit, workoutSession, nutritionGoals, foodPortions, frequentKeys, nutritionHistory] =
+        await Promise.all([
+            getWeights(userId),
+            getWeightForDate(userId, today),
+            getHabit(userId, today),
+            getSessionForDate(userId, today),
+            getNutritionGoals(userId),
+            getFoodPortions(userId, today),
+            getFrequentFoodKeys(userId),
+            getNutritionHistory(userId),
+        ]);
     const trend = computeTrend(weights);
     const sessionDone = workoutSession?.completed === true;
 
@@ -126,6 +137,26 @@ export default async function DashboardPage() {
                             </p>
                         </div>
                     )}
+                </CardContent>
+            </Card>
+
+            {/* Nutrition du jour */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                        <UtensilsCrossed className="size-4" />
+                        Nutrition du jour
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <NutritionTracker
+                        date={today}
+                        proteinGoal={nutritionGoals.proteinGoal}
+                        calorieGoal={nutritionGoals.calorieGoal}
+                        initialPortions={foodPortions}
+                        frequentKeys={frequentKeys}
+                        history={nutritionHistory}
+                    />
                 </CardContent>
             </Card>
 

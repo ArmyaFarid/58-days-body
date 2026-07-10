@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2, KeyRound, TriangleAlert, Palette } from "lucide-react";
+import { Loader2, KeyRound, TriangleAlert, Palette, Target } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppearanceSettings } from "@/components/appearance-settings";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { changePasswordAction, resetAllAction } from "@/lib/actions";
+import { changePasswordAction, resetAllAction, setNutritionGoalsAction } from "@/lib/actions";
 
 const passwordSchema = z
     .object({
@@ -34,7 +34,12 @@ const passwordSchema = z
 
 type PasswordValues = z.infer<typeof passwordSchema>;
 
-export function SettingsView() {
+interface SettingsViewProps {
+    proteinGoal: number;
+    calorieGoal: number;
+}
+
+export function SettingsView({ proteinGoal, calorieGoal }: SettingsViewProps) {
     const router = useRouter();
     const {
         register,
@@ -58,6 +63,28 @@ export function SettingsView() {
 
     const [resetOpen, setResetOpen] = useState(false);
     const [resetting, startReset] = useTransition();
+
+    const [protein, setProtein] = useState(String(proteinGoal));
+    const [calorie, setCalorie] = useState(String(calorieGoal));
+    const [savingGoals, startGoals] = useTransition();
+
+    function onSaveGoals() {
+        const p = parseInt(protein, 10);
+        const c = parseInt(calorie, 10);
+        if (!Number.isFinite(p) || p <= 0 || !Number.isFinite(c) || c <= 0) {
+            toast.error("Valeurs invalides.");
+            return;
+        }
+        startGoals(async () => {
+            try {
+                await setNutritionGoalsAction({ proteinGoal: p, calorieGoal: c });
+                toast.success("Objectifs enregistrés.");
+                router.refresh();
+            } catch {
+                toast.error("Échec de l'enregistrement.");
+            }
+        });
+    }
 
     function onReset() {
         startReset(async () => {
@@ -86,6 +113,46 @@ export function SettingsView() {
                 </CardHeader>
                 <CardContent>
                     <AppearanceSettings />
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                        <Target className="size-4" />
+                        Objectifs nutrition
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1.5">
+                            <Label htmlFor="protein-goal">Protéines (g)</Label>
+                            <Input
+                                id="protein-goal"
+                                type="number"
+                                inputMode="numeric"
+                                min={1}
+                                className="h-11"
+                                value={protein}
+                                onChange={(e) => setProtein(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <Label htmlFor="calorie-goal">Calories (kcal)</Label>
+                            <Input
+                                id="calorie-goal"
+                                type="number"
+                                inputMode="numeric"
+                                min={1}
+                                className="h-11"
+                                value={calorie}
+                                onChange={(e) => setCalorie(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <Button type="button" className="h-11" onClick={onSaveGoals} disabled={savingGoals}>
+                        {savingGoals ? <Loader2 className="size-4 animate-spin" /> : "Enregistrer"}
+                    </Button>
                 </CardContent>
             </Card>
 

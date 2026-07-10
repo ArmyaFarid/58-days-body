@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUserId, changePassword } from "@/lib/auth";
-import { setStartDate } from "@/lib/data/settings";
+import { setStartDate, getNutritionGoals, setNutritionGoals } from "@/lib/data/settings";
+import { getFoodPortions, setFoodPortion } from "@/lib/data/nutrition";
+import { PRESETS, computeTotals } from "@/lib/nutrition";
 import { upsertWeight } from "@/lib/data/weight";
 import { setHabit, type HabitField } from "@/lib/data/habits";
 import { saveSetLog, setSessionCompleted } from "@/lib/data/workout";
@@ -108,4 +110,63 @@ export async function resetAllAction() {
     revalidatePath("/suivi");
     revalidatePath("/habitudes");
     revalidatePath("/seance");
+}
+
+// ─── Nutrition ───
+
+/** Coche automatiquement les habitudes 140 g / 3000 kcal selon les totaux du jour. */
+async function syncNutritionHabits(userId: number, date: string) {
+    const [portions, goals] = await Promise.all([
+        getFoodPortions(userId, date),
+        getNutritionGoals(userId),
+    ]);
+    const totals = computeTotals(portions);
+    await setHabit(userId, date, "protein140", totals.protein >= goals.proteinGoal);
+    await setHabit(userId, date, "kcal3000", totals.calories >= goals.calorieGoal);
+}
+
+const foodPortionSchema = z.object({
+    date: isoDate,
+    foodKey: z.string().min(1).max(64),
+    portions: z.number().int().min(0).max(99),
+});
+
+export async function setFoodPortionAction(input: z.infer<typeof foodPortionSchema>) {
+    const userId = await requireUserId();
+    const { date, foodKey, portions } = foodPortionSchema.parse(input);
+    await setFoodPortion(userId, date, foodKey, portions);
+    await syncNutritionHabits(userId, date);
+    revalidatePath("/");
+    revalidatePath("/habitudes");
+    revalidatePath("/suivi");
+}
+
+export async function applyPresetAction(date: string, presetKey: string) {
+    const userId = await requireUserId();
+    const d = isoDate.parse(date);
+    const key = z.string().min(1).max(32).parse(presetKey);
+    const preset = PRESETS.find((p) => p.key === key);
+    if (!preset) throw new Error("Preset inconnu.");
+    const current = await getFoodPortions(userId, d);
+    for (const item of preset.items) {
+        const next = (current[item.foodKey] ?? 0) + item.portions;
+        await setFoodPortion(userId, d, item.foodKey, next);
+    }
+    await syncNutritionHabits(userId, d);
+    revalidatePath("/");
+    revalidatePath("/habitudes");
+    revalidatePath("/suivi");
+}
+
+const goalsSchema = z.object({
+    proteinGoal: z.number().int().min(1).max(1000),
+    calorieGoal: z.number().int().min(1).max(20000),
+});
+
+export async function setNutritionGoalsAction(input: z.infer<typeof goalsSchema>) {
+    const userId = await requireUserId();
+    const { proteinGoal, calorieGoal } = goalsSchema.parse(input);
+    await setNutritionGoals(userId, proteinGoal, calorieGoal);
+    revalidatePath("/");
+    revalidatePath("/parametres");
 }
