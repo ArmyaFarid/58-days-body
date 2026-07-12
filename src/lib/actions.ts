@@ -141,6 +141,12 @@ export async function setFoodPortionAction(input: z.infer<typeof foodPortionSche
     revalidatePath("/suivi");
 }
 
+export async function getFoodPortionsAction(date: string): Promise<Record<string, number>> {
+    const userId = await requireUserId();
+    const d = isoDate.parse(date);
+    return getFoodPortions(userId, d);
+}
+
 export async function applyPresetAction(date: string, presetKey: string) {
     const userId = await requireUserId();
     const d = isoDate.parse(date);

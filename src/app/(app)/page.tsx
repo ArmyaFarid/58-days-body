@@ -150,7 +150,7 @@ export default async function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                     <NutritionTracker
-                        date={today}
+                        today={today}
                         proteinGoal={nutritionGoals.proteinGoal}
                         calorieGoal={nutritionGoals.calorieGoal}
                         initialPortions={foodPortions}
