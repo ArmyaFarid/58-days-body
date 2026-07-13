@@ -13,20 +13,14 @@ import {
     AccordionTrigger,
     AccordionContent,
 } from "@/components/ui/accordion";
-import {
-    FOODS,
-    CATEGORIES,
-    PRESETS,
-    foodByKey,
-    computeTotals,
-    type Food,
-} from "@/lib/nutrition";
+import { FOODS, CATEGORIES, PRESETS, computeTotals, type Food } from "@/lib/nutrition";
 import {
     setFoodPortionAction,
     applyPresetAction,
     getFoodPortionsAction,
 } from "@/lib/actions";
 import { formatShort } from "@/lib/date";
+import { AddFoodDialog } from "./add-food-dialog";
 
 interface HistoryDay {
     date: string;
@@ -39,6 +33,7 @@ interface NutritionTrackerProps {
     proteinGoal: number;
     calorieGoal: number;
     initialPortions: Record<string, number>;
+    initialCustomFoods: Food[];
     frequentKeys: string[];
     history: HistoryDay[];
 }
@@ -48,6 +43,7 @@ export function NutritionTracker({
     proteinGoal,
     calorieGoal,
     initialPortions,
+    initialCustomFoods,
     frequentKeys,
     history,
 }: NutritionTrackerProps) {
@@ -57,10 +53,18 @@ export function NutritionTracker({
     const portionsRef = useRef(portions);
     portionsRef.current = portions;
     const [query, setQuery] = useState("");
+    const [customFoods, setCustomFoods] = useState<Food[]>(initialCustomFoods);
     const [, startTransition] = useTransition();
     const [loadingDay, startDayLoad] = useTransition();
 
-    const totals = computeTotals(portions);
+    const allFoods = useMemo(() => [...FOODS, ...customFoods], [customFoods]);
+    const foodIndex = useMemo(() => {
+        const m: Record<string, Food> = {};
+        for (const f of allFoods) m[f.key] = f;
+        return m;
+    }, [allFoods]);
+
+    const totals = computeTotals(portions, customFoods);
     const isToday = selectedDate === today;
 
     function changeDay(date: string) {
@@ -114,13 +118,13 @@ export function NutritionTracker({
     }
 
     const frequentFoods = frequentKeys
-        .map((k) => foodByKey(k))
+        .map((k) => foodIndex[k])
         .filter((f): f is Food => Boolean(f));
 
     const q = query.trim().toLowerCase();
     const searchResults = useMemo(
-        () => (q ? FOODS.filter((f) => f.name.toLowerCase().includes(q)) : []),
-        [q],
+        () => (q ? allFoods.filter((f) => f.name.toLowerCase().includes(q)) : []),
+        [q, allFoods],
     );
 
     return (
@@ -185,6 +189,8 @@ export function NutritionTracker({
                 />
             </div>
 
+            <AddFoodDialog onAdded={(food) => setCustomFoods((prev) => [...prev, food])} />
+
             {q ? (
                 /* Résultats de recherche */
                 <div className="flex flex-col gap-2">
@@ -231,7 +237,7 @@ export function NutritionTracker({
                                             <p className="text-muted-foreground text-xs font-medium">
                                                 {cat}
                                             </p>
-                                            {FOODS.filter((f) => f.category === cat).map((food) => (
+                                            {allFoods.filter((f) => f.category === cat).map((food) => (
                                                 <FoodRow
                                                     key={food.key}
                                                     food={food}

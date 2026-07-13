@@ -3,6 +3,7 @@ import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { foodLogs } from "@/lib/db/schema";
 import { computeTotals, type NutritionTotals } from "@/lib/nutrition";
+import { getCustomFoods } from "@/lib/data/custom-foods";
 
 /** Portions du jour, indexées par clé d'aliment. */
 export async function getFoodPortions(
@@ -55,11 +56,14 @@ export async function getNutritionHistory(
     userId: number,
     days: number = 14,
 ): Promise<NutritionDay[]> {
-    const rows = await db
-        .select({ date: foodLogs.date, foodKey: foodLogs.foodKey, portions: foodLogs.portions })
-        .from(foodLogs)
-        .where(eq(foodLogs.userId, userId))
-        .orderBy(desc(foodLogs.date));
+    const [rows, custom] = await Promise.all([
+        db
+            .select({ date: foodLogs.date, foodKey: foodLogs.foodKey, portions: foodLogs.portions })
+            .from(foodLogs)
+            .where(eq(foodLogs.userId, userId))
+            .orderBy(desc(foodLogs.date)),
+        getCustomFoods(userId),
+    ]);
 
     const byDate = new Map<string, Record<string, number>>();
     for (const r of rows) {
@@ -69,7 +73,7 @@ export async function getNutritionHistory(
     }
     return [...byDate.entries()]
         .slice(0, days)
-        .map(([date, portions]) => ({ date, ...computeTotals(portions) }));
+        .map(([date, portions]) => ({ date, ...computeTotals(portions, custom) }));
 }
 
 /** Aliments les plus utilisés sur N jours (somme des portions), pour « Fréquents ». */

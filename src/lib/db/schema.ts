@@ -87,6 +87,26 @@ export const habitLogs = pgTable(
     (t) => [unique("habit_logs_user_date").on(t.userId, t.date)],
 );
 
+// Aliments personnalisés ajoutés par l'utilisateur (le catalogue de base vit en
+// config TS ; ceux-ci s'y ajoutent au runtime). `key` = slug stable référencé
+// par food_logs (ex. « custom-<uuid> »).
+export const customFoods = pgTable(
+    "custom_foods",
+    {
+        id: serial("id").primaryKey(),
+        userId: userRef(),
+        key: text("key").notNull(),
+        name: text("name").notNull(),
+        portionLabel: text("portion_label").notNull(),
+        metric: text("metric").notNull().default(""),
+        protein: real("protein").notNull(),
+        calories: real("calories").notNull(),
+        category: text("category").notNull(),
+        createdAt: timestamp("created_at").defaultNow().notNull(),
+    },
+    (t) => [unique("custom_foods_user_key").on(t.userId, t.key)],
+);
+
 // Portions d'aliments consommées, indexées par jour. Reset « à minuit » implicite
 // (nouvelle date = nouvelles lignes) ; l'historique quotidien reste conservé.
 export const foodLogs = pgTable(

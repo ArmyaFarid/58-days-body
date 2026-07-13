@@ -5,7 +5,8 @@ import { z } from "zod";
 import { requireUserId, changePassword } from "@/lib/auth";
 import { setStartDate, getNutritionGoals, setNutritionGoals } from "@/lib/data/settings";
 import { getFoodPortions, setFoodPortion } from "@/lib/data/nutrition";
-import { PRESETS, computeTotals } from "@/lib/nutrition";
+import { getCustomFoods, addCustomFood } from "@/lib/data/custom-foods";
+import { PRESETS, CATEGORIES, computeTotals, type FoodCategory } from "@/lib/nutrition";
 import { upsertWeight } from "@/lib/data/weight";
 import { setHabit, type HabitField } from "@/lib/data/habits";
 import { saveSetLog, setSessionCompleted } from "@/lib/data/workout";
@@ -116,11 +117,12 @@ export async function resetAllAction() {
 
 /** Coche automatiquement les habitudes 140 g / 3000 kcal selon les totaux du jour. */
 async function syncNutritionHabits(userId: number, date: string) {
-    const [portions, goals] = await Promise.all([
+    const [portions, goals, custom] = await Promise.all([
         getFoodPortions(userId, date),
         getNutritionGoals(userId),
+        getCustomFoods(userId),
     ]);
-    const totals = computeTotals(portions);
+    const totals = computeTotals(portions, custom);
     await setHabit(userId, date, "protein140", totals.protein >= goals.proteinGoal);
     await setHabit(userId, date, "kcal3000", totals.calories >= goals.calorieGoal);
 }
@@ -175,4 +177,28 @@ export async function setNutritionGoalsAction(input: z.infer<typeof goalsSchema>
     await setNutritionGoals(userId, proteinGoal, calorieGoal);
     revalidatePath("/");
     revalidatePath("/parametres");
+}
+
+const newFoodSchema = z.object({
+    name: z.string().trim().min(1).max(60),
+    portionLabel: z.string().trim().min(1).max(40),
+    metric: z.string().trim().max(40),
+    protein: z.number().min(0).max(500),
+    calories: z.number().min(0).max(5000),
+    category: z.string().refine((v) => (CATEGORIES as string[]).includes(v), "Catégorie invalide"),
+});
+
+export async function addCustomFoodAction(input: z.infer<typeof newFoodSchema>) {
+    const userId = await requireUserId();
+    const parsed = newFoodSchema.parse(input);
+    const food = await addCustomFood(userId, {
+        name: parsed.name,
+        portionLabel: parsed.portionLabel,
+        metric: parsed.metric,
+        protein: parsed.protein,
+        calories: parsed.calories,
+        category: parsed.category as FoodCategory,
+    });
+    revalidatePath("/");
+    return food;
 }

@@ -16,12 +16,21 @@ export interface NutritionTotals {
     calories: number;
 }
 
-/** Totaux d'une journée à partir des portions par aliment. Ignore les clés inconnues. */
-export function computeTotals(portionsByKey: Record<string, number>): NutritionTotals {
+/**
+ * Totaux d'une journée à partir des portions par aliment. `extraFoods` couvre les
+ * aliments personnalisés (hors catalogue). Ignore les clés inconnues.
+ */
+export function computeTotals(
+    portionsByKey: Record<string, number>,
+    extraFoods: Food[] = [],
+): NutritionTotals {
+    const index = extraFoods.length
+        ? { ...BY_KEY, ...Object.fromEntries(extraFoods.map((f) => [f.key, f])) }
+        : BY_KEY;
     let protein = 0;
     let calories = 0;
     for (const [key, portions] of Object.entries(portionsByKey)) {
-        const food = BY_KEY[key];
+        const food = index[key];
         if (!food || !portions) continue;
         protein += food.protein * portions;
         calories += food.calories * portions;

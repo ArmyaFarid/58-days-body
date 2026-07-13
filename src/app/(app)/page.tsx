@@ -17,6 +17,7 @@ import {
     getFrequentFoodKeys,
     getNutritionHistory,
 } from "@/lib/data/nutrition";
+import { getCustomFoods } from "@/lib/data/custom-foods";
 import { todayISO, fromISO, formatShort } from "@/lib/date";
 import {
     getDayNumber,
@@ -37,7 +38,7 @@ export default async function DashboardPage() {
     const session = getSession(dayType);
     const training = isTrainingDay(dayType, phase?.key ?? null);
 
-    const [weights, todayWeight, habit, workoutSession, nutritionGoals, foodPortions, frequentKeys, nutritionHistory] =
+    const [weights, todayWeight, habit, workoutSession, nutritionGoals, foodPortions, frequentKeys, nutritionHistory, customFoods] =
         await Promise.all([
             getWeights(userId),
             getWeightForDate(userId, today),
@@ -47,6 +48,7 @@ export default async function DashboardPage() {
             getFoodPortions(userId, today),
             getFrequentFoodKeys(userId),
             getNutritionHistory(userId),
+            getCustomFoods(userId),
         ]);
     const trend = computeTrend(weights);
     const sessionDone = workoutSession?.completed === true;
@@ -154,6 +156,7 @@ export default async function DashboardPage() {
                         proteinGoal={nutritionGoals.proteinGoal}
                         calorieGoal={nutritionGoals.calorieGoal}
                         initialPortions={foodPortions}
+                        initialCustomFoods={customFoods}
                         frequentKeys={frequentKeys}
                         history={nutritionHistory}
                     />

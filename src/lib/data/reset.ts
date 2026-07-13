@@ -10,6 +10,7 @@ import {
     photos,
     measurements,
     foodLogs,
+    customFoods,
 } from "@/lib/db/schema";
 import { getBlobToken } from "@/lib/blob-token";
 
@@ -30,6 +31,7 @@ export async function resetAllData(userId: number): Promise<void> {
     await db.delete(weightLogs).where(eq(weightLogs.userId, userId));
     await db.delete(habitLogs).where(eq(habitLogs.userId, userId));
     await db.delete(foodLogs).where(eq(foodLogs.userId, userId));
+    await db.delete(customFoods).where(eq(customFoods.userId, userId));
     await db.delete(measurements).where(eq(measurements.userId, userId));
     await db.delete(workoutSessions).where(eq(workoutSessions.userId, userId)); // set_logs en cascade
     await db.delete(settings).where(eq(settings.userId, userId));
