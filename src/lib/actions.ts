@@ -6,6 +6,11 @@ import { requireUserId, changePassword } from "@/lib/auth";
 import { setStartDate, getNutritionGoals, setNutritionGoals } from "@/lib/data/settings";
 import { getFoodPortions, setFoodPortion } from "@/lib/data/nutrition";
 import { getCustomFoods, addCustomFood } from "@/lib/data/custom-foods";
+import {
+    addCustomPreset,
+    deleteCustomPreset,
+    getCustomPresetItems,
+} from "@/lib/data/custom-presets";
 import { PRESETS, CATEGORIES, computeTotals, type FoodCategory } from "@/lib/nutrition";
 import { upsertWeight } from "@/lib/data/weight";
 import { setHabit, type HabitField } from "@/lib/data/habits";
@@ -201,4 +206,46 @@ export async function addCustomFoodAction(input: z.infer<typeof newFoodSchema>) 
     });
     revalidatePath("/");
     return food;
+}
+
+const presetItemSchema = z.object({
+    foodKey: z.string().min(1).max(64),
+    portions: z.number().int().min(1).max(99),
+});
+
+const newPresetSchema = z.object({
+    name: z.string().trim().min(1).max(40),
+    items: z.array(presetItemSchema).min(1).max(40),
+});
+
+export async function addCustomPresetAction(input: z.infer<typeof newPresetSchema>) {
+    const userId = await requireUserId();
+    const { name, items } = newPresetSchema.parse(input);
+    const preset = await addCustomPreset(userId, name, items);
+    revalidatePath("/");
+    return preset;
+}
+
+export async function applyCustomPresetAction(date: string, presetId: number) {
+    const userId = await requireUserId();
+    const d = isoDate.parse(date);
+    const id = z.number().int().positive().parse(presetId);
+    const items = await getCustomPresetItems(userId, id);
+    if (!items) throw new Error("Repas introuvable.");
+    const current = await getFoodPortions(userId, d);
+    for (const item of items) {
+        const next = (current[item.foodKey] ?? 0) + item.portions;
+        await setFoodPortion(userId, d, item.foodKey, next);
+    }
+    await syncNutritionHabits(userId, d);
+    revalidatePath("/");
+    revalidatePath("/habitudes");
+    revalidatePath("/suivi");
+}
+
+export async function deleteCustomPresetAction(presetId: number) {
+    const userId = await requireUserId();
+    const id = z.number().int().positive().parse(presetId);
+    await deleteCustomPreset(userId, id);
+    revalidatePath("/");
 }

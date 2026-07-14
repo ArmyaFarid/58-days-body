@@ -7,6 +7,7 @@ import {
     timestamp,
     date,
     real,
+    jsonb,
     unique,
 } from "drizzle-orm/pg-core";
 
@@ -106,6 +107,17 @@ export const customFoods = pgTable(
     },
     (t) => [unique("custom_foods_user_key").on(t.userId, t.key)],
 );
+
+// Repas (presets) personnalisés : une liste d'ingrédients (aliment + portions)
+// que l'utilisateur applique en un clic. `items` référence des clés d'aliments
+// (catalogue de base ou custom_foods).
+export const customPresets = pgTable("custom_presets", {
+    id: serial("id").primaryKey(),
+    userId: userRef(),
+    name: text("name").notNull(),
+    items: jsonb("items").$type<{ foodKey: string; portions: number }[]>().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 // Portions d'aliments consommées, indexées par jour. Reset « à minuit » implicite
 // (nouvelle date = nouvelles lignes) ; l'historique quotidien reste conservé.

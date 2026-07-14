@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Minus, Plus, Search, CalendarDays, Loader2 } from "lucide-react";
+import { Search, CalendarDays, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,10 +17,13 @@ import { FOODS, CATEGORIES, PRESETS, computeTotals, type Food } from "@/lib/nutr
 import {
     setFoodPortionAction,
     applyPresetAction,
+    applyCustomPresetAction,
     getFoodPortionsAction,
 } from "@/lib/actions";
 import { formatShort } from "@/lib/date";
 import { AddFoodDialog } from "./add-food-dialog";
+import { FoodRow } from "./food-row";
+import { MealPresetDialog, type CustomPresetView } from "./meal-preset-dialog";
 
 interface HistoryDay {
     date: string;
@@ -34,6 +37,7 @@ interface NutritionTrackerProps {
     calorieGoal: number;
     initialPortions: Record<string, number>;
     initialCustomFoods: Food[];
+    initialCustomPresets: CustomPresetView[];
     frequentKeys: string[];
     history: HistoryDay[];
 }
@@ -44,6 +48,7 @@ export function NutritionTracker({
     calorieGoal,
     initialPortions,
     initialCustomFoods,
+    initialCustomPresets,
     frequentKeys,
     history,
 }: NutritionTrackerProps) {
@@ -54,6 +59,7 @@ export function NutritionTracker({
     portionsRef.current = portions;
     const [query, setQuery] = useState("");
     const [customFoods, setCustomFoods] = useState<Food[]>(initialCustomFoods);
+    const [customPresets, setCustomPresets] = useState<CustomPresetView[]>(initialCustomPresets);
     const [, startTransition] = useTransition();
     const [loadingDay, startDayLoad] = useTransition();
 
@@ -98,20 +104,36 @@ export function NutritionTracker({
         });
     }
 
-    function applyPreset(presetKey: string) {
-        const preset = PRESETS.find((p) => p.key === presetKey);
-        if (!preset) return;
+    function applyItems(items: { foodKey: string; portions: number }[]) {
         const copy = { ...portionsRef.current };
-        for (const it of preset.items) {
+        for (const it of items) {
             copy[it.foodKey] = (copy[it.foodKey] ?? 0) + it.portions;
         }
         portionsRef.current = copy;
         setPortions(copy);
+    }
+
+    function applyPreset(presetKey: string) {
+        const preset = PRESETS.find((p) => p.key === presetKey);
+        if (!preset) return;
+        applyItems(preset.items);
         startTransition(async () => {
             try {
                 await applyPresetAction(selectedDate, presetKey);
             } catch {
                 toast.error("Échec du preset.");
+                router.refresh();
+            }
+        });
+    }
+
+    function applyCustom(preset: CustomPresetView) {
+        applyItems(preset.items);
+        startTransition(async () => {
+            try {
+                await applyCustomPresetAction(selectedDate, preset.id);
+            } catch {
+                toast.error("Échec du repas.");
                 router.refresh();
             }
         });
@@ -161,19 +183,38 @@ export function NutritionTracker({
                 <StatBar label="Calories" value={totals.calories} goal={calorieGoal} unit="kcal" />
             </div>
 
-            {/* Presets */}
-            <div className="grid grid-cols-2 gap-2">
-                {PRESETS.map((p) => (
-                    <Button
-                        key={p.key}
-                        type="button"
-                        variant="secondary"
-                        className="h-11"
-                        onClick={() => applyPreset(p.key)}
-                    >
-                        {p.label}
-                    </Button>
-                ))}
+            {/* Presets / repas */}
+            <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-2 gap-2">
+                    {PRESETS.map((p) => (
+                        <Button
+                            key={p.key}
+                            type="button"
+                            variant="secondary"
+                            className="h-11"
+                            onClick={() => applyPreset(p.key)}
+                        >
+                            {p.label}
+                        </Button>
+                    ))}
+                    {customPresets.map((p) => (
+                        <Button
+                            key={p.id}
+                            type="button"
+                            variant="secondary"
+                            className="h-11"
+                            onClick={() => applyCustom(p)}
+                        >
+                            {p.name}
+                        </Button>
+                    ))}
+                </div>
+                <MealPresetDialog
+                    foods={allFoods}
+                    presets={customPresets}
+                    onCreated={(p) => setCustomPresets((prev) => [...prev, p])}
+                    onDeleted={(id) => setCustomPresets((prev) => prev.filter((x) => x.id !== id))}
+                />
             </div>
 
             {/* Recherche */}
@@ -318,55 +359,6 @@ function StatBar({
                     style={{ width: `${pct}%` }}
                 />
             </div>
-        </div>
-    );
-}
-
-function FoodRow({
-    food,
-    count,
-    onBump,
-}: {
-    food: Food;
-    count: number;
-    onBump: (foodKey: string, delta: number) => void;
-}) {
-    return (
-        <div
-            className={cn(
-                "flex items-center gap-2 rounded-lg border p-2",
-                count > 0 ? "border-primary/40 bg-primary/5" : "border-border/60",
-            )}
-        >
-            <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{food.name}</p>
-                <p className="text-muted-foreground text-xs">
-                    {food.portionLabel} ({food.metric}) · {food.protein} g · {food.calories} kcal
-                </p>
-            </div>
-            <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="size-9 shrink-0"
-                onClick={() => onBump(food.key, -1)}
-                disabled={count === 0}
-                aria-label="Moins"
-            >
-                <Minus className="size-4" />
-            </Button>
-            <span className="w-6 shrink-0 text-center text-base font-semibold tabular-nums">
-                {count}
-            </span>
-            <Button
-                type="button"
-                size="icon"
-                className="size-9 shrink-0"
-                onClick={() => onBump(food.key, 1)}
-                aria-label="Plus"
-            >
-                <Plus className="size-4" />
-            </Button>
         </div>
     );
 }
