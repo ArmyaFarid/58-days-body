@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WorkoutView } from "@/components/workout/workout-view";
+import { SeanceDateNav } from "@/components/workout/seance-date-nav";
 import type { ExerciseBlock, LoggedSet } from "@/components/workout/types";
 import { getSession as getAuthSession } from "@/lib/auth";
 import { getStartDate } from "@/lib/data/settings";
@@ -23,44 +24,56 @@ import {
     youtubeSearchUrl,
 } from "@/lib/program";
 
-export default async function SeancePage() {
+function resolveDate(raw: string | undefined, today: string): string {
+    return raw && /^\d{4}-\d{2}-\d{2}$/.test(raw) && raw <= today ? raw : today;
+}
+
+export default async function SeancePage({
+    searchParams,
+}: {
+    searchParams: Promise<{ date?: string }>;
+}) {
     const { userId } = (await getAuthSession())!;
     const startDate = (await getStartDate(userId))!;
     const today = todayISO();
-    const dayNumber = getDayNumber(startDate, fromISO(today));
+    const selectedDate = resolveDate((await searchParams).date, today);
+    const dayNumber = getDayNumber(startDate, fromISO(selectedDate));
     const phase = getPhaseForDay(dayNumber);
-    const dayType = getDayTypeForDate(fromISO(today));
+    const dayType = getDayTypeForDate(fromISO(selectedDate));
     const session = getSession(dayType);
     const training = isTrainingDay(dayType, phase?.key ?? null);
 
     if (!training || session.dayType === "repos") {
         return (
-            <div className="flex flex-col items-center justify-center gap-4 p-8 text-center">
-                <div className="bg-muted flex size-14 items-center justify-center rounded-full">
-                    <Moon className="size-6" />
+            <div className="flex flex-col gap-4 p-4">
+                <SeanceDateNav today={today} selectedDate={selectedDate} />
+                <div className="flex flex-col items-center justify-center gap-4 rounded-xl border p-8 text-center">
+                    <div className="bg-muted flex size-14 items-center justify-center rounded-full">
+                        <Moon className="size-6" />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-semibold">Jour de repos</h1>
+                        <p className="text-muted-foreground mt-1 text-sm">
+                            {dayType === "repos"
+                                ? "Jour off — pas de séance prévue ce jour-là."
+                                : "Pas de séance prévue ce jour-là en délestage."}
+                        </p>
+                    </div>
+                    <Button render={<Link href="/" />} variant="outline">
+                        Retour à l&apos;accueil
+                    </Button>
                 </div>
-                <div>
-                    <h1 className="text-xl font-semibold">Repos aujourd&apos;hui</h1>
-                    <p className="text-muted-foreground mt-1 text-sm">
-                        {dayType === "repos"
-                            ? "Jour off — cruiser board bienvenu."
-                            : "Pas de séance prévue aujourd'hui en délestage."}
-                    </p>
-                </div>
-                <Button render={<Link href="/" />} variant="outline">
-                    Retour à l&apos;accueil
-                </Button>
             </div>
         );
     }
 
-    const wSession = await getOrCreateSession(userId, today, dayType, phase?.key ?? "libre");
+    const wSession = await getOrCreateSession(userId, selectedDate, dayType, phase?.key ?? "libre");
     const todayLogs = await getSetLogsForSession(wSession.id);
 
     const blocks: ExerciseBlock[] = await Promise.all(
         session.exercises.map(async (ex) => {
             const lexicon = LEXICON[ex.lexiconKey];
-            const last = await getLastPerformance(userId, ex.key, today);
+            const last = await getLastPerformance(userId, ex.key, selectedDate);
 
             const loggedMap: Record<number, LoggedSet> = {};
             for (const l of todayLogs.filter((t) => t.exerciseKey === ex.key)) {
@@ -93,6 +106,8 @@ export default async function SeancePage() {
 
     return (
         <WorkoutView
+            today={today}
+            selectedDate={selectedDate}
             sessionId={wSession.id}
             completed={wSession.completed}
             title={session.title}

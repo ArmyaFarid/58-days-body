@@ -8,9 +8,12 @@ import { Button } from "@/components/ui/button";
 import { completeSessionAction } from "@/lib/actions";
 import { ExerciseCard } from "./exercise-card";
 import { RestTimer, type RestState } from "./rest-timer";
+import { SeanceDateNav } from "./seance-date-nav";
 import type { ExerciseBlock } from "./types";
 
 interface WorkoutViewProps {
+    today: string;
+    selectedDate: string;
     sessionId: number;
     completed: boolean;
     title: string;
@@ -24,6 +27,8 @@ interface WorkoutViewProps {
 }
 
 export function WorkoutView({
+    today,
+    selectedDate,
     sessionId,
     completed,
     title,
@@ -77,11 +82,15 @@ export function WorkoutView({
 
     return (
         <div className="flex flex-col gap-4 p-4">
-            <section className="pt-2">
+            <SeanceDateNav today={today} selectedDate={selectedDate} />
+            <section>
                 <div className="flex items-center justify-between gap-2">
                     <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
                     {phaseLabel ? <Badge variant="secondary">{phaseLabel}</Badge> : null}
                 </div>
+                {selectedDate !== today ? (
+                    <p className="text-primary text-xs font-medium">Séance d&apos;un jour passé</p>
+                ) : null}
                 <p className="text-muted-foreground text-sm">{focus}</p>
                 {isCircuit && circuitNote ? (
                     <p className="bg-muted mt-2 flex items-start gap-1.5 rounded-md p-2 text-sm">
