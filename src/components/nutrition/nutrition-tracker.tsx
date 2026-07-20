@@ -213,6 +213,9 @@ export function NutritionTracker({
                     foods={allFoods}
                     presets={customPresets}
                     onCreated={(p) => setCustomPresets((prev) => [...prev, p])}
+                    onUpdated={(p) =>
+                        setCustomPresets((prev) => prev.map((x) => (x.id === p.id ? p : x)))
+                    }
                     onDeleted={(id) => setCustomPresets((prev) => prev.filter((x) => x.id !== id))}
                 />
             </div>
@@ -230,7 +233,14 @@ export function NutritionTracker({
                 />
             </div>
 
-            <AddFoodDialog onAdded={(food) => setCustomFoods((prev) => [...prev, food])} />
+            <AddFoodDialog
+                customFoods={customFoods}
+                onAdded={(food) => setCustomFoods((prev) => [...prev, food])}
+                onUpdated={(food) =>
+                    setCustomFoods((prev) => prev.map((f) => (f.key === food.key ? food : f)))
+                }
+                onDeleted={(key) => setCustomFoods((prev) => prev.filter((f) => f.key !== key))}
+            />
 
             {q ? (
                 /* Résultats de recherche */

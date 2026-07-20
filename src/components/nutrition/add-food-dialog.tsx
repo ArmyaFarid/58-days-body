@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +15,22 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { CATEGORIES, type Food, type FoodCategory } from "@/lib/nutrition";
-import { addCustomFoodAction } from "@/lib/actions";
+import {
+    addCustomFoodAction,
+    updateCustomFoodAction,
+    deleteCustomFoodAction,
+} from "@/lib/actions";
 
-export function AddFoodDialog({ onAdded }: { onAdded: (food: Food) => void }) {
+interface AddFoodDialogProps {
+    customFoods: Food[];
+    onAdded: (food: Food) => void;
+    onUpdated: (food: Food) => void;
+    onDeleted: (key: string) => void;
+}
+
+export function AddFoodDialog({ customFoods, onAdded, onUpdated, onDeleted }: AddFoodDialogProps) {
     const [open, setOpen] = useState(false);
+    const [editingKey, setEditingKey] = useState<string | null>(null);
     const [name, setName] = useState("");
     const [portionLabel, setPortionLabel] = useState("");
     const [metric, setMetric] = useState("");
@@ -26,14 +38,26 @@ export function AddFoodDialog({ onAdded }: { onAdded: (food: Food) => void }) {
     const [calories, setCalories] = useState("");
     const [category, setCategory] = useState<FoodCategory>(CATEGORIES[0]);
     const [saving, startSaving] = useTransition();
+    const [deleting, startDeleting] = useTransition();
 
     function reset() {
+        setEditingKey(null);
         setName("");
         setPortionLabel("");
         setMetric("");
         setProtein("");
         setCalories("");
         setCategory(CATEGORIES[0]);
+    }
+
+    function startEdit(food: Food) {
+        setEditingKey(food.key);
+        setName(food.name);
+        setPortionLabel(food.portionLabel);
+        setMetric(food.metric);
+        setProtein(String(food.protein));
+        setCalories(String(food.calories));
+        setCategory(food.category);
     }
 
     function onSubmit() {
@@ -47,28 +71,52 @@ export function AddFoodDialog({ onAdded }: { onAdded: (food: Food) => void }) {
             toast.error("Protéines et calories invalides.");
             return;
         }
+        const payload = {
+            name: name.trim(),
+            portionLabel: portionLabel.trim(),
+            metric: metric.trim(),
+            protein: p,
+            calories: c,
+            category,
+        };
         startSaving(async () => {
             try {
-                const food = await addCustomFoodAction({
-                    name: name.trim(),
-                    portionLabel: portionLabel.trim(),
-                    metric: metric.trim(),
-                    protein: p,
-                    calories: c,
-                    category,
-                });
-                onAdded(food);
-                toast.success("Aliment ajouté.");
+                if (editingKey) {
+                    const food = await updateCustomFoodAction({ key: editingKey, ...payload });
+                    onUpdated(food);
+                    toast.success("Aliment modifié.");
+                } else {
+                    const food = await addCustomFoodAction(payload);
+                    onAdded(food);
+                    toast.success("Aliment ajouté.");
+                }
                 reset();
-                setOpen(false);
             } catch {
-                toast.error("Ajout impossible.");
+                toast.error(editingKey ? "Modification impossible." : "Ajout impossible.");
+            }
+        });
+    }
+
+    function onDelete(key: string) {
+        startDeleting(async () => {
+            try {
+                await deleteCustomFoodAction(key);
+                onDeleted(key);
+                if (editingKey === key) reset();
+            } catch {
+                toast.error("Suppression impossible.");
             }
         });
     }
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+            open={open}
+            onOpenChange={(o) => {
+                setOpen(o);
+                if (!o) reset();
+            }}
+        >
             <DialogTrigger
                 render={
                     <Button type="button" variant="outline" className="h-10 w-full">
@@ -77,92 +125,171 @@ export function AddFoodDialog({ onAdded }: { onAdded: (food: Food) => void }) {
                     </Button>
                 }
             />
-            <DialogContent className="max-w-sm">
+            <DialogContent className="max-h-[85vh] max-w-sm overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Nouvel aliment</DialogTitle>
+                    <DialogTitle>{editingKey ? "Modifier l'aliment" : "Mes aliments"}</DialogTitle>
                 </DialogHeader>
-                <div className="flex flex-col gap-3">
-                    <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="food-name">Nom</Label>
-                        <Input
-                            id="food-name"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            placeholder="Ex. Poulet grillé"
-                            className="h-11"
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1.5">
-                            <Label htmlFor="food-portion">Portion</Label>
+                            <Label htmlFor="food-name">Nom</Label>
                             <Input
-                                id="food-portion"
-                                value={portionLabel}
-                                onChange={(e) => setPortionLabel(e.target.value)}
-                                placeholder="1 paume"
+                                id="food-name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="Ex. Poulet grillé"
                                 className="h-11"
                             />
                         </div>
-                        <div className="flex flex-col gap-1.5">
-                            <Label htmlFor="food-metric">Équivalent (g/ml)</Label>
-                            <Input
-                                id="food-metric"
-                                value={metric}
-                                onChange={(e) => setMetric(e.target.value)}
-                                placeholder="≈120 g"
-                                className="h-11"
-                            />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1.5">
+                                <Label htmlFor="food-portion">Portion</Label>
+                                <Input
+                                    id="food-portion"
+                                    value={portionLabel}
+                                    onChange={(e) => setPortionLabel(e.target.value)}
+                                    placeholder="1 paume"
+                                    className="h-11"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                                <Label htmlFor="food-metric">Équivalent (g/ml)</Label>
+                                <Input
+                                    id="food-metric"
+                                    value={metric}
+                                    onChange={(e) => setMetric(e.target.value)}
+                                    placeholder="≈120 g"
+                                    className="h-11"
+                                />
+                            </div>
                         </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="flex flex-col gap-1.5">
-                            <Label htmlFor="food-protein">Protéines (g)</Label>
-                            <Input
-                                id="food-protein"
-                                type="number"
-                                inputMode="decimal"
-                                min={0}
-                                value={protein}
-                                onChange={(e) => setProtein(e.target.value)}
-                                className="h-11"
-                            />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col gap-1.5">
+                                <Label htmlFor="food-protein">Protéines (g)</Label>
+                                <Input
+                                    id="food-protein"
+                                    type="number"
+                                    inputMode="decimal"
+                                    min={0}
+                                    value={protein}
+                                    onChange={(e) => setProtein(e.target.value)}
+                                    className="h-11"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                                <Label htmlFor="food-calories">Calories</Label>
+                                <Input
+                                    id="food-calories"
+                                    type="number"
+                                    inputMode="decimal"
+                                    min={0}
+                                    value={calories}
+                                    onChange={(e) => setCalories(e.target.value)}
+                                    className="h-11"
+                                />
+                            </div>
                         </div>
                         <div className="flex flex-col gap-1.5">
-                            <Label htmlFor="food-calories">Calories</Label>
-                            <Input
-                                id="food-calories"
-                                type="number"
-                                inputMode="decimal"
-                                min={0}
-                                value={calories}
-                                onChange={(e) => setCalories(e.target.value)}
-                                className="h-11"
-                            />
+                            <Label>Catégorie</Label>
+                            <div className="flex flex-wrap gap-1.5">
+                                {CATEGORIES.map((cat) => (
+                                    <button
+                                        key={cat}
+                                        type="button"
+                                        onClick={() => setCategory(cat)}
+                                        className={cn(
+                                            "rounded-full px-3 py-1.5 text-xs transition-colors",
+                                            category === cat
+                                                ? "bg-primary text-primary-foreground"
+                                                : "bg-muted",
+                                        )}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                        <Label>Catégorie</Label>
-                        <div className="flex flex-wrap gap-1.5">
-                            {CATEGORIES.map((cat) => (
-                                <button
-                                    key={cat}
+                        <div className="flex gap-2">
+                            {editingKey ? (
+                                <Button
                                     type="button"
-                                    onClick={() => setCategory(cat)}
+                                    variant="outline"
+                                    className="h-11"
+                                    onClick={reset}
+                                    disabled={saving}
+                                >
+                                    Annuler
+                                </Button>
+                            ) : null}
+                            <Button
+                                type="button"
+                                className="h-11 flex-1"
+                                onClick={onSubmit}
+                                disabled={saving}
+                            >
+                                {saving ? (
+                                    <Loader2 className="size-4 animate-spin" />
+                                ) : editingKey ? (
+                                    "Enregistrer"
+                                ) : (
+                                    "Ajouter"
+                                )}
+                            </Button>
+                        </div>
+                    </div>
+
+                    {customFoods.length > 0 ? (
+                        <div className="flex flex-col gap-2 border-t pt-3">
+                            <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                                Mes aliments
+                            </p>
+                            {customFoods.map((food) => (
+                                <div
+                                    key={food.key}
                                     className={cn(
-                                        "rounded-full px-3 py-1.5 text-xs transition-colors",
-                                        category === cat
-                                            ? "bg-primary text-primary-foreground"
-                                            : "bg-muted",
+                                        "flex items-center gap-2 rounded-lg border p-2",
+                                        editingKey === food.key
+                                            ? "border-primary/50 bg-primary/5"
+                                            : "border-border/60",
                                     )}
                                 >
-                                    {cat}
-                                </button>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-medium">{food.name}</p>
+                                        <p className="text-muted-foreground text-xs">
+                                            {food.portionLabel} · {food.protein} g · {food.calories} kcal
+                                        </p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="size-9 shrink-0"
+                                        onClick={() =>
+                                            editingKey === food.key ? reset() : startEdit(food)
+                                        }
+                                        aria-label="Modifier"
+                                    >
+                                        {editingKey === food.key ? (
+                                            <X className="size-4" />
+                                        ) : (
+                                            <Pencil className="size-4" />
+                                        )}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="size-9 shrink-0"
+                                        onClick={() => onDelete(food.key)}
+                                        disabled={deleting}
+                                        aria-label="Supprimer"
+                                    >
+                                        <Trash2 className="text-destructive size-4" />
+                                    </Button>
+                                </div>
                             ))}
                         </div>
-                    </div>
-                    <Button type="button" className="h-11" onClick={onSubmit} disabled={saving}>
-                        {saving ? <Loader2 className="size-4 animate-spin" /> : "Ajouter"}
-                    </Button>
+                    ) : null}
                 </div>
             </DialogContent>
         </Dialog>

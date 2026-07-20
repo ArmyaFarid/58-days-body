@@ -1,5 +1,5 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { customFoods } from "@/lib/db/schema";
 import { CATEGORIES, type Food, type FoodCategory } from "@/lib/nutrition";
@@ -50,4 +50,29 @@ export async function addCustomFood(userId: number, input: NewCustomFood): Promi
         category: input.category,
     });
     return { key, ...input };
+}
+
+export async function updateCustomFood(
+    userId: number,
+    key: string,
+    input: NewCustomFood,
+): Promise<Food> {
+    await db
+        .update(customFoods)
+        .set({
+            name: input.name,
+            portionLabel: input.portionLabel,
+            metric: input.metric,
+            protein: input.protein,
+            calories: input.calories,
+            category: input.category,
+        })
+        .where(and(eq(customFoods.userId, userId), eq(customFoods.key, key)));
+    return { key, ...input };
+}
+
+export async function deleteCustomFood(userId: number, key: string): Promise<void> {
+    await db
+        .delete(customFoods)
+        .where(and(eq(customFoods.userId, userId), eq(customFoods.key, key)));
 }

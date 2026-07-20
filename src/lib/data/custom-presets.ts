@@ -36,6 +36,21 @@ export async function addCustomPreset(
     return { id: r.id, name: r.name, items: r.items };
 }
 
+export async function updateCustomPreset(
+    userId: number,
+    id: number,
+    name: string,
+    items: PresetItem[],
+): Promise<CustomPreset> {
+    const rows = await db
+        .update(customPresets)
+        .set({ name, items })
+        .where(and(eq(customPresets.id, id), eq(customPresets.userId, userId)))
+        .returning();
+    const r = rows[0];
+    return { id: r.id, name: r.name, items: r.items };
+}
+
 /** Items d'un preset appartenant à l'utilisateur (null si introuvable). */
 export async function getCustomPresetItems(
     userId: number,

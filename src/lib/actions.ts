@@ -5,9 +5,15 @@ import { z } from "zod";
 import { requireUserId, changePassword } from "@/lib/auth";
 import { setStartDate, getNutritionGoals, setNutritionGoals } from "@/lib/data/settings";
 import { getFoodPortions, setFoodPortion } from "@/lib/data/nutrition";
-import { getCustomFoods, addCustomFood } from "@/lib/data/custom-foods";
+import {
+    getCustomFoods,
+    addCustomFood,
+    updateCustomFood,
+    deleteCustomFood,
+} from "@/lib/data/custom-foods";
 import {
     addCustomPreset,
+    updateCustomPreset,
     deleteCustomPreset,
     getCustomPresetItems,
 } from "@/lib/data/custom-presets";
@@ -208,6 +214,30 @@ export async function addCustomFoodAction(input: z.infer<typeof newFoodSchema>) 
     return food;
 }
 
+const editFoodSchema = newFoodSchema.extend({ key: z.string().min(1).max(64) });
+
+export async function updateCustomFoodAction(input: z.infer<typeof editFoodSchema>) {
+    const userId = await requireUserId();
+    const parsed = editFoodSchema.parse(input);
+    const food = await updateCustomFood(userId, parsed.key, {
+        name: parsed.name,
+        portionLabel: parsed.portionLabel,
+        metric: parsed.metric,
+        protein: parsed.protein,
+        calories: parsed.calories,
+        category: parsed.category as FoodCategory,
+    });
+    revalidatePath("/");
+    return food;
+}
+
+export async function deleteCustomFoodAction(key: string) {
+    const userId = await requireUserId();
+    const k = z.string().min(1).max(64).parse(key);
+    await deleteCustomFood(userId, k);
+    revalidatePath("/");
+}
+
 const presetItemSchema = z.object({
     foodKey: z.string().min(1).max(64),
     portions: z.number().int().min(1).max(99),
@@ -222,6 +252,16 @@ export async function addCustomPresetAction(input: z.infer<typeof newPresetSchem
     const userId = await requireUserId();
     const { name, items } = newPresetSchema.parse(input);
     const preset = await addCustomPreset(userId, name, items);
+    revalidatePath("/");
+    return preset;
+}
+
+const editPresetSchema = newPresetSchema.extend({ id: z.number().int().positive() });
+
+export async function updateCustomPresetAction(input: z.infer<typeof editPresetSchema>) {
+    const userId = await requireUserId();
+    const { id, name, items } = editPresetSchema.parse(input);
+    const preset = await updateCustomPreset(userId, id, name, items);
     revalidatePath("/");
     return preset;
 }

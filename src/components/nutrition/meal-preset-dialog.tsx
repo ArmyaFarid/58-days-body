@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Plus, Search, Trash2, Loader2, X } from "lucide-react";
+import { Plus, Search, Trash2, Loader2, X, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,11 @@ import {
 } from "@/components/ui/dialog";
 import { FoodRow } from "./food-row";
 import type { Food } from "@/lib/nutrition";
-import { addCustomPresetAction, deleteCustomPresetAction } from "@/lib/actions";
+import {
+    addCustomPresetAction,
+    updateCustomPresetAction,
+    deleteCustomPresetAction,
+} from "@/lib/actions";
 
 export interface CustomPresetView {
     id: number;
@@ -27,11 +31,19 @@ interface MealPresetDialogProps {
     foods: Food[];
     presets: CustomPresetView[];
     onCreated: (preset: CustomPresetView) => void;
+    onUpdated: (preset: CustomPresetView) => void;
     onDeleted: (id: number) => void;
 }
 
-export function MealPresetDialog({ foods, presets, onCreated, onDeleted }: MealPresetDialogProps) {
+export function MealPresetDialog({
+    foods,
+    presets,
+    onCreated,
+    onUpdated,
+    onDeleted,
+}: MealPresetDialogProps) {
     const [open, setOpen] = useState(false);
+    const [editingId, setEditingId] = useState<number | null>(null);
     const [name, setName] = useState("");
     const [query, setQuery] = useState("");
     const [items, setItems] = useState<Record<string, number>>({});
@@ -52,6 +64,20 @@ export function MealPresetDialog({ foods, presets, onCreated, onDeleted }: MealP
 
     const selected = Object.entries(items).filter(([, n]) => n > 0);
 
+    function reset() {
+        setEditingId(null);
+        setName("");
+        setQuery("");
+        setItems({});
+    }
+
+    function startEdit(preset: CustomPresetView) {
+        setEditingId(preset.id);
+        setName(preset.name);
+        setQuery("");
+        setItems(Object.fromEntries(preset.items.map((it) => [it.foodKey, it.portions])));
+    }
+
     function bump(foodKey: string, delta: number) {
         setItems((prev) => {
             const next = Math.max(0, (prev[foodKey] ?? 0) + delta);
@@ -62,7 +88,7 @@ export function MealPresetDialog({ foods, presets, onCreated, onDeleted }: MealP
         });
     }
 
-    function onCreate() {
+    function onSubmit() {
         if (!name.trim()) {
             toast.error("Donne un nom au repas.");
             return;
@@ -71,20 +97,28 @@ export function MealPresetDialog({ foods, presets, onCreated, onDeleted }: MealP
             toast.error("Ajoute au moins un ingrédient.");
             return;
         }
-        const payload = {
-            name: name.trim(),
-            items: selected.map(([foodKey, portions]) => ({ foodKey, portions })),
-        };
+        const payloadItems = selected.map(([foodKey, portions]) => ({ foodKey, portions }));
         startSaving(async () => {
             try {
-                const preset = await addCustomPresetAction(payload);
-                onCreated(preset);
-                toast.success("Repas créé.");
-                setName("");
-                setQuery("");
-                setItems({});
+                if (editingId) {
+                    const preset = await updateCustomPresetAction({
+                        id: editingId,
+                        name: name.trim(),
+                        items: payloadItems,
+                    });
+                    onUpdated(preset);
+                    toast.success("Repas modifié.");
+                } else {
+                    const preset = await addCustomPresetAction({
+                        name: name.trim(),
+                        items: payloadItems,
+                    });
+                    onCreated(preset);
+                    toast.success("Repas créé.");
+                }
+                reset();
             } catch {
-                toast.error("Création impossible.");
+                toast.error(editingId ? "Modification impossible." : "Création impossible.");
             }
         });
     }
@@ -94,6 +128,7 @@ export function MealPresetDialog({ foods, presets, onCreated, onDeleted }: MealP
             try {
                 await deleteCustomPresetAction(id);
                 onDeleted(id);
+                if (editingId === id) reset();
             } catch {
                 toast.error("Suppression impossible.");
             }
@@ -101,7 +136,13 @@ export function MealPresetDialog({ foods, presets, onCreated, onDeleted }: MealP
     }
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+            open={open}
+            onOpenChange={(o) => {
+                setOpen(o);
+                if (!o) reset();
+            }}
+        >
             <DialogTrigger
                 render={
                     <Button type="button" variant="outline" className="h-11">
@@ -112,11 +153,10 @@ export function MealPresetDialog({ foods, presets, onCreated, onDeleted }: MealP
             />
             <DialogContent className="max-h-[85vh] max-w-sm overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Mes repas</DialogTitle>
+                    <DialogTitle>{editingId ? "Modifier le repas" : "Mes repas"}</DialogTitle>
                 </DialogHeader>
 
                 <div className="flex flex-col gap-4">
-                    {/* Création */}
                     <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-1.5">
                             <Label htmlFor="preset-name">Nom du repas</Label>
@@ -174,12 +214,35 @@ export function MealPresetDialog({ foods, presets, onCreated, onDeleted }: MealP
                             </div>
                         ) : null}
 
-                        <Button type="button" className="h-11" onClick={onCreate} disabled={saving}>
-                            {saving ? <Loader2 className="size-4 animate-spin" /> : "Créer le repas"}
-                        </Button>
+                        <div className="flex gap-2">
+                            {editingId ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="h-11"
+                                    onClick={reset}
+                                    disabled={saving}
+                                >
+                                    Annuler
+                                </Button>
+                            ) : null}
+                            <Button
+                                type="button"
+                                className="h-11 flex-1"
+                                onClick={onSubmit}
+                                disabled={saving}
+                            >
+                                {saving ? (
+                                    <Loader2 className="size-4 animate-spin" />
+                                ) : editingId ? (
+                                    "Enregistrer"
+                                ) : (
+                                    "Créer le repas"
+                                )}
+                            </Button>
+                        </div>
                     </div>
 
-                    {/* Liste existante */}
                     {presets.length > 0 ? (
                         <div className="flex flex-col gap-2 border-t pt-3">
                             <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
@@ -188,7 +251,12 @@ export function MealPresetDialog({ foods, presets, onCreated, onDeleted }: MealP
                             {presets.map((p) => (
                                 <div
                                     key={p.id}
-                                    className="border-border/60 flex items-center gap-2 rounded-lg border p-2"
+                                    className={
+                                        "flex items-center gap-2 rounded-lg border p-2 " +
+                                        (editingId === p.id
+                                            ? "border-primary/50 bg-primary/5"
+                                            : "border-border/60")
+                                    }
                                 >
                                     <div className="min-w-0 flex-1">
                                         <p className="truncate text-sm font-medium">{p.name}</p>
@@ -196,6 +264,20 @@ export function MealPresetDialog({ foods, presets, onCreated, onDeleted }: MealP
                                             {p.items.length} ingrédient{p.items.length > 1 ? "s" : ""}
                                         </p>
                                     </div>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="size-9 shrink-0"
+                                        onClick={() => (editingId === p.id ? reset() : startEdit(p))}
+                                        aria-label="Modifier"
+                                    >
+                                        {editingId === p.id ? (
+                                            <X className="size-4" />
+                                        ) : (
+                                            <Pencil className="size-4" />
+                                        )}
+                                    </Button>
                                     <Button
                                         type="button"
                                         variant="ghost"
