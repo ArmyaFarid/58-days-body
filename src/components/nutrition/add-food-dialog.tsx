@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Plus, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { Plus, Loader2, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,7 +121,7 @@ export function AddFoodDialog({ customFoods, onAdded, onUpdated, onDeleted }: Ad
                 render={
                     <Button type="button" variant="outline" className="h-10 w-full">
                         <Plus className="size-4" />
-                        Ajouter un aliment
+                        Ajouter / modifier un aliment
                     </Button>
                 }
             />
@@ -130,7 +130,51 @@ export function AddFoodDialog({ customFoods, onAdded, onUpdated, onDeleted }: Ad
                     <DialogTitle>{editingKey ? "Modifier l'aliment" : "Mes aliments"}</DialogTitle>
                 </DialogHeader>
                 <div className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-3">
+                    {!editingKey && customFoods.length > 0 ? (
+                        <div className="flex flex-col gap-2">
+                            <p className="text-muted-foreground text-xs font-medium">
+                                Touche ✎ pour modifier, 🗑 pour supprimer.
+                            </p>
+                            {customFoods.map((food) => (
+                                <div
+                                    key={food.key}
+                                    className="border-border/60 flex items-center gap-2 rounded-lg border p-2"
+                                >
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-medium">{food.name}</p>
+                                        <p className="text-muted-foreground text-xs">
+                                            {food.portionLabel} · {food.protein} g · {food.calories} kcal
+                                        </p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="size-9 shrink-0"
+                                        onClick={() => startEdit(food)}
+                                        aria-label="Modifier"
+                                    >
+                                        <Pencil className="size-4" />
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="size-9 shrink-0"
+                                        onClick={() => onDelete(food.key)}
+                                        disabled={deleting}
+                                        aria-label="Supprimer"
+                                    >
+                                        <Trash2 className="text-destructive size-4" />
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    ) : null}
+                    <div className="flex flex-col gap-3 border-t pt-3">
+                        <p className="text-sm font-semibold">
+                            {editingKey ? "Modifier l'aliment" : "Nouvel aliment"}
+                        </p>
                         <div className="flex flex-col gap-1.5">
                             <Label htmlFor="food-name">Nom</Label>
                             <Input
@@ -237,59 +281,6 @@ export function AddFoodDialog({ customFoods, onAdded, onUpdated, onDeleted }: Ad
                             </Button>
                         </div>
                     </div>
-
-                    {customFoods.length > 0 ? (
-                        <div className="flex flex-col gap-2 border-t pt-3">
-                            <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                                Mes aliments
-                            </p>
-                            {customFoods.map((food) => (
-                                <div
-                                    key={food.key}
-                                    className={cn(
-                                        "flex items-center gap-2 rounded-lg border p-2",
-                                        editingKey === food.key
-                                            ? "border-primary/50 bg-primary/5"
-                                            : "border-border/60",
-                                    )}
-                                >
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate text-sm font-medium">{food.name}</p>
-                                        <p className="text-muted-foreground text-xs">
-                                            {food.portionLabel} · {food.protein} g · {food.calories} kcal
-                                        </p>
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="size-9 shrink-0"
-                                        onClick={() =>
-                                            editingKey === food.key ? reset() : startEdit(food)
-                                        }
-                                        aria-label="Modifier"
-                                    >
-                                        {editingKey === food.key ? (
-                                            <X className="size-4" />
-                                        ) : (
-                                            <Pencil className="size-4" />
-                                        )}
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="size-9 shrink-0"
-                                        onClick={() => onDelete(food.key)}
-                                        disabled={deleting}
-                                        aria-label="Supprimer"
-                                    >
-                                        <Trash2 className="text-destructive size-4" />
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-                    ) : null}
                 </div>
             </DialogContent>
         </Dialog>
