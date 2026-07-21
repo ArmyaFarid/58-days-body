@@ -16,24 +16,32 @@ export interface NutritionTotals {
     calories: number;
 }
 
-/**
- * Totaux d'une journée à partir des portions par aliment. `extraFoods` couvre les
- * aliments personnalisés (hors catalogue). Ignore les clés inconnues.
- */
-export function computeTotals(
-    portionsByKey: Record<string, number>,
+/** Macros (par portion) d'un aliment : catalogue ou aliment perso (extraFoods). */
+export function foodMacro(
+    foodKey: string,
     extraFoods: Food[] = [],
-): NutritionTotals {
-    const index = extraFoods.length
-        ? { ...BY_KEY, ...Object.fromEntries(extraFoods.map((f) => [f.key, f])) }
-        : BY_KEY;
+): { protein: number; calories: number } | undefined {
+    const f = BY_KEY[foodKey] ?? extraFoods.find((x) => x.key === foodKey);
+    return f ? { protein: f.protein, calories: f.calories } : undefined;
+}
+
+/**
+ * Une portion loggée, avec ses macros FIGÉES au moment de la saisie (snapshot).
+ * Ainsi, modifier un aliment plus tard ne change pas les journées passées.
+ */
+export interface LoggedEntry {
+    foodKey: string;
+    portions: number;
+    protein: number;
+    calories: number;
+}
+
+export function totalsOfEntries(entries: LoggedEntry[]): NutritionTotals {
     let protein = 0;
     let calories = 0;
-    for (const [key, portions] of Object.entries(portionsByKey)) {
-        const food = index[key];
-        if (!food || !portions) continue;
-        protein += food.protein * portions;
-        calories += food.calories * portions;
+    for (const e of entries) {
+        protein += e.protein * e.portions;
+        calories += e.calories * e.portions;
     }
     return { protein: Math.round(protein), calories: Math.round(calories) };
 }

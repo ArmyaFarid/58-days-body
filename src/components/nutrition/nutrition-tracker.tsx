@@ -13,7 +13,7 @@ import {
     AccordionTrigger,
     AccordionContent,
 } from "@/components/ui/accordion";
-import { FOODS, CATEGORIES, PRESETS, computeTotals, type Food } from "@/lib/nutrition";
+import { FOODS, CATEGORIES, PRESETS, type Food, type LoggedEntry } from "@/lib/nutrition";
 import {
     setFoodPortionAction,
     applyPresetAction,
@@ -31,22 +31,36 @@ interface HistoryDay {
     calories: number;
 }
 
+type Macro = { protein: number; calories: number };
+
 interface NutritionTrackerProps {
     today: string;
     proteinGoal: number;
     calorieGoal: number;
-    initialPortions: Record<string, number>;
+    initialEntries: LoggedEntry[];
     initialCustomFoods: Food[];
     initialCustomPresets: CustomPresetView[];
     frequentKeys: string[];
     history: HistoryDay[];
 }
 
+function portionsOf(entries: LoggedEntry[]): Record<string, number> {
+    const p: Record<string, number> = {};
+    for (const e of entries) p[e.foodKey] = e.portions;
+    return p;
+}
+
+function snapshotOf(entries: LoggedEntry[]): Record<string, Macro> {
+    const s: Record<string, Macro> = {};
+    for (const e of entries) s[e.foodKey] = { protein: e.protein, calories: e.calories };
+    return s;
+}
+
 export function NutritionTracker({
     today,
     proteinGoal,
     calorieGoal,
-    initialPortions,
+    initialEntries,
     initialCustomFoods,
     initialCustomPresets,
     frequentKeys,
@@ -54,9 +68,14 @@ export function NutritionTracker({
 }: NutritionTrackerProps) {
     const router = useRouter();
     const [selectedDate, setSelectedDate] = useState(today);
-    const [portions, setPortions] = useState<Record<string, number>>(initialPortions);
+    const [portions, setPortions] = useState<Record<string, number>>(() => portionsOf(initialEntries));
     const portionsRef = useRef(portions);
     portionsRef.current = portions;
+    // Macros figées par aliment pour le jour affiché : modifier un aliment ne
+    // change pas les totaux déjà enregistrés.
+    const [snapshot, setSnapshot] = useState<Record<string, Macro>>(() => snapshotOf(initialEntries));
+    const snapshotRef = useRef(snapshot);
+    snapshotRef.current = snapshot;
     const [query, setQuery] = useState("");
     const [customFoods, setCustomFoods] = useState<Food[]>(initialCustomFoods);
     const [customPresets, setCustomPresets] = useState<CustomPresetView[]>(initialCustomPresets);
@@ -70,17 +89,36 @@ export function NutritionTracker({
         return m;
     }, [allFoods]);
 
-    const totals = computeTotals(portions, customFoods);
+    let totalProtein = 0;
+    let totalCalories = 0;
+    for (const [key, n] of Object.entries(portions)) {
+        if (!n) continue;
+        const m = snapshot[key] ?? foodIndex[key];
+        if (!m) continue;
+        totalProtein += m.protein * n;
+        totalCalories += m.calories * n;
+    }
+    const totals = { protein: Math.round(totalProtein), calories: Math.round(totalCalories) };
     const isToday = selectedDate === today;
+
+    function freeze(foodKey: string, base: Record<string, Macro>): Record<string, Macro> {
+        const food = foodIndex[foodKey];
+        if (!food) return base;
+        return { ...base, [foodKey]: { protein: food.protein, calories: food.calories } };
+    }
 
     function changeDay(date: string) {
         if (!date || date === selectedDate) return;
         setSelectedDate(date);
         startDayLoad(async () => {
             try {
-                const p = await getFoodPortionsAction(date);
+                const entries = await getFoodPortionsAction(date);
+                const p = portionsOf(entries);
+                const s = snapshotOf(entries);
                 portionsRef.current = p;
+                snapshotRef.current = s;
                 setPortions(p);
+                setSnapshot(s);
             } catch {
                 toast.error("Chargement du jour impossible.");
             }
@@ -94,6 +132,9 @@ export function NutritionTracker({
         else copy[foodKey] = next;
         portionsRef.current = copy;
         setPortions(copy);
+        const s = freeze(foodKey, snapshotRef.current);
+        snapshotRef.current = s;
+        setSnapshot(s);
         startTransition(async () => {
             try {
                 await setFoodPortionAction({ date: selectedDate, foodKey, portions: next });
@@ -106,11 +147,15 @@ export function NutritionTracker({
 
     function applyItems(items: { foodKey: string; portions: number }[]) {
         const copy = { ...portionsRef.current };
+        let s = snapshotRef.current;
         for (const it of items) {
             copy[it.foodKey] = (copy[it.foodKey] ?? 0) + it.portions;
+            s = freeze(it.foodKey, s);
         }
         portionsRef.current = copy;
+        snapshotRef.current = s;
         setPortions(copy);
+        setSnapshot(s);
     }
 
     function applyPreset(presetKey: string) {

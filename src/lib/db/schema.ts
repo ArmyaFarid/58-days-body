@@ -129,6 +129,10 @@ export const foodLogs = pgTable(
         date: date("date").notNull(),
         foodKey: text("food_key").notNull(),
         portions: integer("portions").notNull().default(0),
+        // Macros par portion figées à la saisie (snapshot). Nullable pour les
+        // lignes antérieures ; on retombe alors sur le catalogue courant.
+        protein: real("protein"),
+        calories: real("calories"),
     },
     (t) => [unique("food_logs_user_date_food").on(t.userId, t.date, t.foodKey)],
 );

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUserId, changePassword } from "@/lib/auth";
 import { setStartDate, getNutritionGoals, setNutritionGoals } from "@/lib/data/settings";
-import { getFoodPortions, setFoodPortion } from "@/lib/data/nutrition";
+import { getFoodPortions, getLoggedEntries, setFoodPortion } from "@/lib/data/nutrition";
 import {
     getCustomFoods,
     addCustomFood,
@@ -17,7 +17,14 @@ import {
     deleteCustomPreset,
     getCustomPresetItems,
 } from "@/lib/data/custom-presets";
-import { PRESETS, CATEGORIES, computeTotals, type FoodCategory } from "@/lib/nutrition";
+import {
+    PRESETS,
+    CATEGORIES,
+    foodMacro,
+    totalsOfEntries,
+    type Food,
+    type FoodCategory,
+} from "@/lib/nutrition";
 import { upsertWeight } from "@/lib/data/weight";
 import { setHabit, type HabitField } from "@/lib/data/habits";
 import { saveSetLog, setSessionCompleted } from "@/lib/data/workout";
@@ -128,14 +135,18 @@ export async function resetAllAction() {
 
 /** Coche automatiquement les habitudes 140 g / 3000 kcal selon les totaux du jour. */
 async function syncNutritionHabits(userId: number, date: string) {
-    const [portions, goals, custom] = await Promise.all([
-        getFoodPortions(userId, date),
+    const [entries, goals] = await Promise.all([
+        getLoggedEntries(userId, date),
         getNutritionGoals(userId),
-        getCustomFoods(userId),
     ]);
-    const totals = computeTotals(portions, custom);
+    const totals = totalsOfEntries(entries);
     await setHabit(userId, date, "protein140", totals.protein >= goals.proteinGoal);
     await setHabit(userId, date, "kcal3000", totals.calories >= goals.calorieGoal);
+}
+
+/** Macros courantes d'un aliment (catalogue ou perso) — figées à la saisie. */
+function macroOf(foodKey: string, custom: Food[]): { protein: number; calories: number } {
+    return foodMacro(foodKey, custom) ?? { protein: 0, calories: 0 };
 }
 
 const foodPortionSchema = z.object({
@@ -147,17 +158,19 @@ const foodPortionSchema = z.object({
 export async function setFoodPortionAction(input: z.infer<typeof foodPortionSchema>) {
     const userId = await requireUserId();
     const { date, foodKey, portions } = foodPortionSchema.parse(input);
-    await setFoodPortion(userId, date, foodKey, portions);
+    const custom = await getCustomFoods(userId);
+    const { protein, calories } = macroOf(foodKey, custom);
+    await setFoodPortion(userId, date, foodKey, portions, protein, calories);
     await syncNutritionHabits(userId, date);
     revalidatePath("/");
     revalidatePath("/habitudes");
     revalidatePath("/suivi");
 }
 
-export async function getFoodPortionsAction(date: string): Promise<Record<string, number>> {
+export async function getFoodPortionsAction(date: string) {
     const userId = await requireUserId();
     const d = isoDate.parse(date);
-    return getFoodPortions(userId, d);
+    return getLoggedEntries(userId, d);
 }
 
 export async function applyPresetAction(date: string, presetKey: string) {
@@ -166,10 +179,11 @@ export async function applyPresetAction(date: string, presetKey: string) {
     const key = z.string().min(1).max(32).parse(presetKey);
     const preset = PRESETS.find((p) => p.key === key);
     if (!preset) throw new Error("Preset inconnu.");
-    const current = await getFoodPortions(userId, d);
+    const [current, custom] = await Promise.all([getFoodPortions(userId, d), getCustomFoods(userId)]);
     for (const item of preset.items) {
         const next = (current[item.foodKey] ?? 0) + item.portions;
-        await setFoodPortion(userId, d, item.foodKey, next);
+        const { protein, calories } = macroOf(item.foodKey, custom);
+        await setFoodPortion(userId, d, item.foodKey, next, protein, calories);
     }
     await syncNutritionHabits(userId, d);
     revalidatePath("/");
@@ -272,10 +286,11 @@ export async function applyCustomPresetAction(date: string, presetId: number) {
     const id = z.number().int().positive().parse(presetId);
     const items = await getCustomPresetItems(userId, id);
     if (!items) throw new Error("Repas introuvable.");
-    const current = await getFoodPortions(userId, d);
+    const [current, custom] = await Promise.all([getFoodPortions(userId, d), getCustomFoods(userId)]);
     for (const item of items) {
         const next = (current[item.foodKey] ?? 0) + item.portions;
-        await setFoodPortion(userId, d, item.foodKey, next);
+        const { protein, calories } = macroOf(item.foodKey, custom);
+        await setFoodPortion(userId, d, item.foodKey, next, protein, calories);
     }
     await syncNutritionHabits(userId, d);
     revalidatePath("/");

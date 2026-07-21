@@ -2,10 +2,10 @@ import "server-only";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { foodLogs } from "@/lib/db/schema";
-import { computeTotals, type NutritionTotals } from "@/lib/nutrition";
+import { foodMacro, totalsOfEntries, type LoggedEntry, type NutritionTotals } from "@/lib/nutrition";
 import { getCustomFoods } from "@/lib/data/custom-foods";
 
-/** Portions du jour, indexées par clé d'aliment. */
+/** Portions du jour, indexées par clé d'aliment (sans macros). */
 export async function getFoodPortions(
     userId: number,
     date: string,
@@ -19,12 +19,48 @@ export async function getFoodPortions(
     return map;
 }
 
-/** Fixe le nombre de portions d'un aliment pour un jour. 0 ⇒ supprime la ligne. */
+/**
+ * Portions loggées du jour, avec macros résolues (snapshot en base, ou catalogue
+ * courant en secours pour les lignes sans snapshot).
+ */
+export async function getLoggedEntries(userId: number, date: string): Promise<LoggedEntry[]> {
+    const [rows, custom] = await Promise.all([
+        db
+            .select({
+                foodKey: foodLogs.foodKey,
+                portions: foodLogs.portions,
+                protein: foodLogs.protein,
+                calories: foodLogs.calories,
+            })
+            .from(foodLogs)
+            .where(and(eq(foodLogs.userId, userId), eq(foodLogs.date, date))),
+        getCustomFoods(userId),
+    ]);
+    return rows.map((r) => resolveEntry(r, custom));
+}
+
+function resolveEntry(
+    r: { foodKey: string; portions: number; protein: number | null; calories: number | null },
+    custom: Awaited<ReturnType<typeof getCustomFoods>>,
+): LoggedEntry {
+    if (r.protein != null && r.calories != null) {
+        return { foodKey: r.foodKey, portions: r.portions, protein: r.protein, calories: r.calories };
+    }
+    const macro = foodMacro(r.foodKey, custom) ?? { protein: 0, calories: 0 };
+    return { foodKey: r.foodKey, portions: r.portions, ...macro };
+}
+
+/**
+ * Fixe le nombre de portions d'un aliment pour un jour, en figeant ses macros
+ * (par portion). 0 ⇒ supprime la ligne.
+ */
 export async function setFoodPortion(
     userId: number,
     date: string,
     foodKey: string,
     portions: number,
+    protein: number,
+    calories: number,
 ): Promise<void> {
     if (portions <= 0) {
         await db
@@ -40,10 +76,10 @@ export async function setFoodPortion(
     }
     await db
         .insert(foodLogs)
-        .values({ userId, date, foodKey, portions })
+        .values({ userId, date, foodKey, portions, protein, calories })
         .onConflictDoUpdate({
             target: [foodLogs.userId, foodLogs.date, foodLogs.foodKey],
-            set: { portions },
+            set: { portions, protein, calories },
         });
 }
 
@@ -51,29 +87,35 @@ export interface NutritionDay extends NutritionTotals {
     date: string;
 }
 
-/** Totaux par jour (N derniers jours avec au moins une portion), récent d'abord. */
+/** Totaux par jour (N derniers jours), macros figées, récent d'abord. */
 export async function getNutritionHistory(
     userId: number,
     days: number = 14,
 ): Promise<NutritionDay[]> {
     const [rows, custom] = await Promise.all([
         db
-            .select({ date: foodLogs.date, foodKey: foodLogs.foodKey, portions: foodLogs.portions })
+            .select({
+                date: foodLogs.date,
+                foodKey: foodLogs.foodKey,
+                portions: foodLogs.portions,
+                protein: foodLogs.protein,
+                calories: foodLogs.calories,
+            })
             .from(foodLogs)
             .where(eq(foodLogs.userId, userId))
             .orderBy(desc(foodLogs.date)),
         getCustomFoods(userId),
     ]);
 
-    const byDate = new Map<string, Record<string, number>>();
+    const byDate = new Map<string, LoggedEntry[]>();
     for (const r of rows) {
-        const m = byDate.get(r.date) ?? {};
-        m[r.foodKey] = r.portions;
-        byDate.set(r.date, m);
+        const list = byDate.get(r.date) ?? [];
+        list.push(resolveEntry(r, custom));
+        byDate.set(r.date, list);
     }
     return [...byDate.entries()]
         .slice(0, days)
-        .map(([date, portions]) => ({ date, ...computeTotals(portions, custom) }));
+        .map(([date, entries]) => ({ date, ...totalsOfEntries(entries) }));
 }
 
 /** Aliments les plus utilisés sur N jours (somme des portions), pour « Fréquents ». */
