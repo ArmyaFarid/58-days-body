@@ -4,6 +4,7 @@ import { startOfWeek, format } from "date-fns";
 import { db } from "@/lib/db";
 import { weightLogs } from "@/lib/db/schema";
 import { fromISO } from "@/lib/date";
+import type { TrendConfig } from "@/lib/program";
 
 export interface WeightEntry {
     date: string;
@@ -68,11 +69,12 @@ export interface WeightTrend {
     suggestionText: string | null;
 }
 
-export function computeTrend(weights: WeightEntry[]): WeightTrend {
+export function computeTrend(weights: WeightEntry[], config: TrendConfig): WeightTrend {
     const latest = weights.length ? weights[weights.length - 1] : null;
     const weekly = computeWeeklyAverages(weights);
     const current = weekly.at(-1) ?? null;
     const previous = weekly.at(-2) ?? null;
+    const beforePrevious = weekly.at(-3) ?? null;
 
     let deltaPerWeek: number | null = null;
     if (current && previous) {
@@ -82,12 +84,20 @@ export function computeTrend(weights: WeightEntry[]): WeightTrend {
     let suggestion: WeightTrend["suggestion"] = null;
     let suggestionText: string | null = null;
     if (deltaPerWeek !== null) {
-        if (deltaPerWeek > 0.5) {
+        if (deltaPerWeek > config.highGain) {
             suggestion = "deficit";
-            suggestionText = "Prise > 0,5 kg/sem → retire ~200 kcal/jour.";
-        } else if (deltaPerWeek < 0.2) {
-            suggestion = "surplus";
-            suggestionText = "Prise < 0,2 kg/sem → ajoute ~250 kcal/jour (si ça dure 2 semaines).";
+            suggestionText = config.deficitText;
+        } else if (deltaPerWeek < config.lowGain) {
+            // Certains programmes n'ajoutent des calories qu'après 2 semaines molles.
+            const prevDelta =
+                previous && beforePrevious ? previous.avg - beforePrevious.avg : null;
+            const twoWeeksOk =
+                !config.lowGainTwoWeeks ||
+                (prevDelta !== null && prevDelta < config.lowGain);
+            if (twoWeeksOk) {
+                suggestion = "surplus";
+                suggestionText = config.surplusText;
+            }
         }
     }
 

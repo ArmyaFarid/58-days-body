@@ -6,6 +6,7 @@ import { SeanceDateNav } from "@/components/workout/seance-date-nav";
 import type { ExerciseBlock, LoggedSet } from "@/components/workout/types";
 import { getSession as getAuthSession } from "@/lib/auth";
 import { getStartDate } from "@/lib/data/settings";
+import { getUserProgramId } from "@/lib/data/users";
 import {
     getOrCreateSession,
     getSetLogsForSession,
@@ -14,13 +15,9 @@ import {
 import { todayISO, fromISO } from "@/lib/date";
 import {
     getDayNumber,
-    getPhaseForDay,
-    getDayTypeForDate,
-    getSession,
-    isTrainingDay,
+    getProgram,
     parseSetCount,
     getBandMode,
-    LEXICON,
     youtubeSearchUrl,
 } from "@/lib/program";
 
@@ -35,15 +32,17 @@ export default async function SeancePage({
 }) {
     const { userId } = (await getAuthSession())!;
     const startDate = (await getStartDate(userId))!;
+    const programId = await getUserProgramId(userId);
+    const program = getProgram(programId);
     const today = todayISO();
     const selectedDate = resolveDate((await searchParams).date, today);
     const dayNumber = getDayNumber(startDate, fromISO(selectedDate));
-    const phase = getPhaseForDay(dayNumber);
-    const dayType = getDayTypeForDate(fromISO(selectedDate));
-    const session = getSession(dayType);
-    const training = isTrainingDay(dayType, phase?.key ?? null);
+    const phase = program.getPhase(dayNumber);
+    const dayType = program.dayTypeForWeekday(fromISO(selectedDate).getDay());
+    const session = program.sessions[dayType];
+    const training = program.isTrainingDay(dayType, phase?.key ?? null);
 
-    if (!training || session.dayType === "repos") {
+    if (!training || !session || session.dayType === "repos") {
         return (
             <div className="flex flex-col gap-4 p-4">
                 <SeanceDateNav today={today} selectedDate={selectedDate} />
@@ -72,7 +71,7 @@ export default async function SeancePage({
 
     const blocks: ExerciseBlock[] = await Promise.all(
         session.exercises.map(async (ex) => {
-            const lexicon = LEXICON[ex.lexiconKey];
+            const lexicon = program.lexicon[ex.lexiconKey];
             const last = await getLastPerformance(userId, ex.key, selectedDate);
 
             const loggedMap: Record<number, LoggedSet> = {};
@@ -113,7 +112,7 @@ export default async function SeancePage({
             title={session.title}
             focus={session.focus}
             phaseLabel={phase?.label ?? null}
-            showIntensification={phase?.key === "bloc2"}
+            showIntensification={program.features.intensification && phase?.key === "bloc2"}
             isCircuit={Boolean(session.isCircuit)}
             circuitNote={session.circuitNote}
             finisher={session.finisher}

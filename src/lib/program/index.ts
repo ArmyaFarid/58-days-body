@@ -1,11 +1,14 @@
 import { differenceInCalendarDays, parseISO } from "date-fns";
-import type { DayType, Phase, Exercise } from "./types";
+import type { DayType, Phase, Exercise, Program, PhaseInfo, ProgramId } from "./types";
 import { SESSIONS } from "./sessions";
 import { LEXICON } from "./lexicon";
+import { DEFAULT_PROTEIN_GOAL, DEFAULT_CALORIE_GOAL } from "@/lib/nutrition";
+import { MASSE_FEMME } from "./masse-femme";
 
 export * from "./types";
 export { SESSIONS } from "./sessions";
 export { LEXICON, youtubeSearchUrl } from "./lexicon";
+export { MASSE_FEMME } from "./masse-femme";
 
 export const PROGRAM_LENGTH = 58;
 
@@ -83,7 +86,7 @@ export function parseSetCount(sets: string): number {
 export type BandMode = "resistance" | "assist" | "none" | "time";
 
 export function getBandMode(exercise: Exercise): BandMode {
-    if (exercise.key === "dead-hang") return "time";
+    if (exercise.time || exercise.key === "dead-hang") return "time";
     const b = (exercise.band ?? "").toLowerCase();
     if (b.includes("assist")) return "assist";
     if (b) return "resistance";
@@ -164,9 +167,10 @@ export const ALL_EXERCISES: ExerciseRef[] = (() => {
 })();
 
 export function getExerciseName(key: string): string {
-    // Fallback lexique : garde un libellé propre pour les exercices retirés du
-    // split (ex. nordic-curl) mais encore présents dans l'historique.
-    return ALL_EXERCISES.find((e) => e.key === key)?.name ?? LEXICON[key]?.name ?? key;
+    // Recherche globale (tous programmes confondus) : garde un libellé propre
+    // pour l'historique, y compris pour les exercices retirés d'un split
+    // (ex. nordic-curl) ou appartenant à l'autre programme.
+    return EXERCISE_NAME_MAP.get(key) ?? key;
 }
 
 /** Clés de tractions — pour le jalon « tractions strictes » (sans assistance). */
@@ -183,3 +187,88 @@ export const KEY_EXERCISES: string[] = [
     "curl-bande",
     "face-pull",
 ];
+
+// ─── Registre des programmes ───
+
+export const DEFAULT_PROGRAM_ID: ProgramId = "programme-58";
+
+/** Programme historique (58 jours) exposé via l'abstraction `Program`. */
+export const PROGRAMME_58: Program = {
+    id: "programme-58",
+    label: "Programme 58 jours",
+    length: PROGRAM_LENGTH,
+    hasReferencePage: true,
+    sessions: SESSIONS,
+    lexicon: LEXICON,
+    features: {
+        photos: true,
+        creatine: true,
+        intensification: true,
+        trackFat: false,
+        targetWeight: false,
+        measurementsPrimary: false,
+        nutritionFirst: false,
+        sessionHabit: false,
+    },
+    habitFields: ["creatine", "kcal3000", "protein140", "sleepBefore23"],
+    habitLabels: {
+        creatine: { label: "Créatine 5 g", short: "Créatine" },
+        kcal3000: { label: "3 000 kcal", short: "Calories" },
+        protein140: { label: "140 g protéines", short: "Protéines" },
+        sleepBefore23: { label: "Couché avant 23 h", short: "Sommeil" },
+    },
+    dayTypeForWeekday(weekday) {
+        return WEEKDAY_TO_DAYTYPE[weekday] ?? "repos";
+    },
+    isTrainingDay(dayType, phaseKey) {
+        return isTrainingDay(dayType, phaseKey as Phase["key"] | null);
+    },
+    getPhase(dayNumber): PhaseInfo | null {
+        const p = getPhaseForDay(dayNumber);
+        return p ? { key: p.key, label: p.label, shortLabel: p.label, description: p.description } : null;
+    },
+    nutritionForPhase() {
+        return { protein: DEFAULT_PROTEIN_GOAL, calories: DEFAULT_CALORIE_GOAL };
+    },
+    trend: {
+        targetText:
+            "Vise +0,25 à 0,35 kg/semaine. (Ignore le +1 kg des 2 premières semaines : créatine + eau.)",
+        highGain: 0.5,
+        lowGain: 0.2,
+        lowGainTwoWeeks: false,
+        deficitText: "Prise > 0,5 kg/sem → retire ~200 kcal/jour.",
+        surplusText: "Prise < 0,2 kg/sem → ajoute ~250 kcal/jour (si ça dure 2 semaines).",
+    },
+};
+
+const PROGRAMS: Record<ProgramId, Program> = {
+    "programme-58": PROGRAMME_58,
+    "masse-femme": MASSE_FEMME,
+};
+
+/** Programme d'un utilisateur ; NULL/inconnu ⇒ programme 58 (compte historique). */
+export function getProgram(programId: string | null | undefined): Program {
+    return PROGRAMS[(programId ?? DEFAULT_PROGRAM_ID) as ProgramId] ?? PROGRAMME_58;
+}
+
+/** Options proposées au sélecteur d'inscription. */
+export const PROGRAM_OPTIONS: { id: ProgramId; label: string }[] = [
+    { id: "programme-58", label: PROGRAMME_58.label },
+    { id: "masse-femme", label: MASSE_FEMME.label },
+];
+
+// Table nom d'exercice (tous programmes) pour l'historique de perfs.
+const EXERCISE_NAME_MAP: Map<string, string> = (() => {
+    const map = new Map<string, string>();
+    for (const program of Object.values(PROGRAMS)) {
+        for (const [key, entry] of Object.entries(program.lexicon)) {
+            if (!map.has(key)) map.set(key, entry.name);
+        }
+        for (const session of Object.values(program.sessions)) {
+            for (const ex of session.exercises) {
+                if (!map.has(ex.key)) map.set(ex.key, ex.name);
+            }
+        }
+    }
+    return map;
+})();

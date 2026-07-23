@@ -1,8 +1,28 @@
 import type { HabitField } from "@/lib/data/habits";
+import type { Program } from "@/lib/program";
 
-export const HABIT_META: { field: HabitField; label: string; short: string }[] = [
-    { field: "creatine", label: "Créatine 5 g", short: "Créatine" },
-    { field: "kcal3000", label: "3 000 kcal", short: "Calories" },
-    { field: "protein140", label: "140 g protéines", short: "Protéines" },
-    { field: "sleepBefore23", label: "Couché avant 23 h", short: "Sommeil" },
-];
+export interface HabitMeta {
+    field: HabitField;
+    label: string;
+    short: string;
+    /** Cochée automatiquement par le tracker nutrition. */
+    auto: boolean;
+}
+
+// Ces habitudes se cochent seules quand l'objectif nutrition du jour est atteint.
+const AUTO_FIELDS: HabitField[] = ["protein140", "kcal3000"];
+
+const DEFAULT_LABELS: Record<HabitField, { label: string; short: string }> = {
+    creatine: { label: "Créatine 5 g", short: "Créatine" },
+    kcal3000: { label: "Calories atteintes", short: "Calories" },
+    protein140: { label: "Protéines atteintes", short: "Protéines" },
+    sleepBefore23: { label: "Sommeil", short: "Sommeil" },
+};
+
+/** Habitudes (colonnes) à afficher pour un programme, dans l'ordre. */
+export function habitMetaFor(program: Program): HabitMeta[] {
+    return program.habitFields.map((field) => {
+        const base = program.habitLabels?.[field] ?? DEFAULT_LABELS[field];
+        return { field, label: base.label, short: base.short, auto: AUTO_FIELDS.includes(field) };
+    });
+}

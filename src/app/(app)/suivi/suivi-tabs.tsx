@@ -3,19 +3,21 @@
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
-const VALID = ["poids", "photos", "mensurations", "historique"];
+export interface SuiviTab {
+    value: string;
+    label: string;
+    content: React.ReactNode;
+}
 
 interface SuiviTabsProps {
     initialTab?: string;
-    poids: React.ReactNode;
-    photos: React.ReactNode;
-    mensurations: React.ReactNode;
-    historique: React.ReactNode;
+    tabs: SuiviTab[];
 }
 
-export function SuiviTabs({ initialTab, poids, photos, mensurations, historique }: SuiviTabsProps) {
+export function SuiviTabs({ initialTab, tabs }: SuiviTabsProps) {
+    const values = tabs.map((t) => t.value);
     const [active, setActive] = useState(
-        initialTab && VALID.includes(initialTab) ? initialTab : "poids",
+        initialTab && values.includes(initialTab) ? initialTab : values[0],
     );
 
     function onChange(value: string) {
@@ -29,23 +31,17 @@ export function SuiviTabs({ initialTab, poids, photos, mensurations, historique 
     return (
         <Tabs value={active} onValueChange={(v) => onChange(String(v))} className="p-4">
             <TabsList className="w-full">
-                <TabsTrigger value="poids">Poids</TabsTrigger>
-                <TabsTrigger value="photos">Photos</TabsTrigger>
-                <TabsTrigger value="mensurations">Mensur.</TabsTrigger>
-                <TabsTrigger value="historique">Perf</TabsTrigger>
+                {tabs.map((t) => (
+                    <TabsTrigger key={t.value} value={t.value}>
+                        {t.label}
+                    </TabsTrigger>
+                ))}
             </TabsList>
-            <TabsContent value="poids" className="pt-4" keepMounted>
-                {poids}
-            </TabsContent>
-            <TabsContent value="photos" className="pt-4" keepMounted>
-                {photos}
-            </TabsContent>
-            <TabsContent value="mensurations" className="pt-4" keepMounted>
-                {mensurations}
-            </TabsContent>
-            <TabsContent value="historique" className="pt-4" keepMounted>
-                {historique}
-            </TabsContent>
+            {tabs.map((t) => (
+                <TabsContent key={t.value} value={t.value} className="pt-4" keepMounted>
+                    {t.content}
+                </TabsContent>
+            ))}
         </Tabs>
     );
 }

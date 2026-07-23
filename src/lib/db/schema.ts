@@ -15,6 +15,20 @@ export const users = pgTable("users", {
     id: serial("id").primaryKey(),
     username: text("username").notNull().unique(),
     passwordHashB64: text("password_hash_b64").notNull(),
+    // Programme suivi par l'utilisateur. NULL ⇒ « programme-58 » (défaut, compte
+    // historique). Renseigné au signup pour les nouveaux comptes.
+    programId: text("program_id"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Codes d'invitation à usage unique, générés par un utilisateur pour en inviter
+// un autre. Le programme est choisi par l'invité au signup (code neutre).
+export const inviteCodes = pgTable("invite_codes", {
+    id: serial("id").primaryKey(),
+    code: text("code").notNull().unique(),
+    createdBy: integer("created_by").references(() => users.id, { onDelete: "cascade" }),
+    usedBy: integer("used_by").references(() => users.id, { onDelete: "set null" }),
+    usedAt: timestamp("used_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -26,9 +40,18 @@ export const settings = pgTable("settings", {
     id: serial("id").primaryKey(),
     userId: userRef().unique(),
     startDate: date("start_date").notNull(),
-    // Objectifs nutrition (nullable : NULL ⇒ défauts applicatifs 140 g / 3000 kcal).
+    // Objectifs nutrition (nullable : NULL ⇒ défauts du programme).
+    // proteinGoal/calorieGoal/fatGoal = phase 1 ; les *_2 = phase 2 (programmes
+    // multi-phases comme « masse-femme »). fatGoal nullable : NULL ⇒ pas de suivi
+    // lipides pour ce programme.
     proteinGoal: integer("protein_goal"),
     calorieGoal: integer("calorie_goal"),
+    fatGoal: integer("fat_goal"),
+    proteinGoal2: integer("protein_goal_2"),
+    calorieGoal2: integer("calorie_goal_2"),
+    fatGoal2: integer("fat_goal_2"),
+    // Poids cible (kg) — programmes ouverts sans date de fin (« masse-femme »).
+    targetWeightKg: real("target_weight_kg"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -103,6 +126,8 @@ export const customFoods = pgTable(
         protein: real("protein").notNull(),
         calories: real("calories").notNull(),
         category: text("category").notNull(),
+        // Lipides (g) par portion. Nullable : NULL ⇒ non renseigné (0 au calcul).
+        fat: real("fat"),
         createdAt: timestamp("created_at").defaultNow().notNull(),
     },
     (t) => [unique("custom_foods_user_key").on(t.userId, t.key)],
@@ -133,6 +158,7 @@ export const foodLogs = pgTable(
         // lignes antérieures ; on retombe alors sur le catalogue courant.
         protein: real("protein"),
         calories: real("calories"),
+        fat: real("fat"),
     },
     (t) => [unique("food_logs_user_date_food").on(t.userId, t.date, t.foodKey)],
 );

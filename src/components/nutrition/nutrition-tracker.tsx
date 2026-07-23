@@ -29,14 +29,17 @@ interface HistoryDay {
     date: string;
     protein: number;
     calories: number;
+    fat: number;
 }
 
-type Macro = { protein: number; calories: number };
+type Macro = { protein: number; calories: number; fat: number };
 
 interface NutritionTrackerProps {
     today: string;
     proteinGoal: number;
     calorieGoal: number;
+    /** Objectif lipides (g). Fourni ⇒ affiche le compteur lipides (programmes qui suivent le gras). */
+    fatGoal?: number | null;
     initialEntries: LoggedEntry[];
     initialCustomFoods: Food[];
     initialCustomPresets: CustomPresetView[];
@@ -52,7 +55,7 @@ function portionsOf(entries: LoggedEntry[]): Record<string, number> {
 
 function snapshotOf(entries: LoggedEntry[]): Record<string, Macro> {
     const s: Record<string, Macro> = {};
-    for (const e of entries) s[e.foodKey] = { protein: e.protein, calories: e.calories };
+    for (const e of entries) s[e.foodKey] = { protein: e.protein, calories: e.calories, fat: e.fat };
     return s;
 }
 
@@ -60,6 +63,7 @@ export function NutritionTracker({
     today,
     proteinGoal,
     calorieGoal,
+    fatGoal,
     initialEntries,
     initialCustomFoods,
     initialCustomPresets,
@@ -91,20 +95,27 @@ export function NutritionTracker({
 
     let totalProtein = 0;
     let totalCalories = 0;
+    let totalFat = 0;
     for (const [key, n] of Object.entries(portions)) {
         if (!n) continue;
         const m = snapshot[key] ?? foodIndex[key];
         if (!m) continue;
         totalProtein += m.protein * n;
         totalCalories += m.calories * n;
+        totalFat += (m.fat ?? 0) * n;
     }
-    const totals = { protein: Math.round(totalProtein), calories: Math.round(totalCalories) };
+    const totals = {
+        protein: Math.round(totalProtein),
+        calories: Math.round(totalCalories),
+        fat: Math.round(totalFat),
+    };
     const isToday = selectedDate === today;
+    const showFat = fatGoal != null && fatGoal > 0;
 
     function freeze(foodKey: string, base: Record<string, Macro>): Record<string, Macro> {
         const food = foodIndex[foodKey];
         if (!food) return base;
-        return { ...base, [foodKey]: { protein: food.protein, calories: food.calories } };
+        return { ...base, [foodKey]: { protein: food.protein, calories: food.calories, fat: food.fat } };
     }
 
     function changeDay(date: string) {
@@ -226,6 +237,9 @@ export function NutritionTracker({
                 ) : null}
                 <StatBar label="Protéines" value={totals.protein} goal={proteinGoal} unit="g" />
                 <StatBar label="Calories" value={totals.calories} goal={calorieGoal} unit="kcal" />
+                {showFat ? (
+                    <StatBar label="Lipides" value={totals.fat} goal={fatGoal} unit="g" />
+                ) : null}
             </div>
 
             {/* Presets / repas */}
@@ -280,6 +294,7 @@ export function NutritionTracker({
 
             <AddFoodDialog
                 customFoods={customFoods}
+                trackFat={showFat}
                 onAdded={(food) => setCustomFoods((prev) => [...prev, food])}
                 onUpdated={(food) =>
                     setCustomFoods((prev) => prev.map((f) => (f.key === food.key ? food : f)))
@@ -362,6 +377,7 @@ export function NutritionTracker({
                                                 </span>
                                                 <span className="tabular-nums">
                                                     {d.protein} g · {d.calories} kcal
+                                                    {showFat ? ` · ${d.fat} g lip.` : ""}
                                                 </span>
                                             </li>
                                         ))}

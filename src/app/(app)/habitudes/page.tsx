@@ -5,7 +5,10 @@ import { HabitChecklist } from "@/components/habit-checklist";
 import { HabitHistoryGrid } from "@/components/habit-history-grid";
 import { getSession } from "@/lib/auth";
 import { getHabit, getAllHabits } from "@/lib/data/habits";
-import { HABIT_META } from "@/lib/habits-meta";
+import { getSessionForDate } from "@/lib/data/workout";
+import { getUserProgramId } from "@/lib/data/users";
+import { habitMetaFor } from "@/lib/habits-meta";
+import { getProgram } from "@/lib/program";
 import { todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import type { HabitField } from "@/lib/data/habits";
@@ -26,7 +29,14 @@ function computeStreak(trueDates: Set<string>, today: string): number {
 export default async function HabitudesPage() {
     const { userId } = (await getSession())!;
     const today = todayISO();
-    const [habitToday, all] = await Promise.all([getHabit(userId, today), getAllHabits(userId)]);
+    const [habitToday, all, programId, workoutToday] = await Promise.all([
+        getHabit(userId, today),
+        getAllHabits(userId),
+        getUserProgramId(userId),
+        getSessionForDate(userId, today),
+    ]);
+    const program = getProgram(programId);
+    const meta = habitMetaFor(program);
 
     const trueSets: Record<HabitField, Set<string>> = {
         creatine: new Set(),
@@ -35,12 +45,12 @@ export default async function HabitudesPage() {
         sleepBefore23: new Set(),
     };
     for (const d of all) {
-        for (const { field } of HABIT_META) {
+        for (const { field } of meta) {
             if (d[field]) trueSets[field].add(d.date);
         }
     }
 
-    const streaks = HABIT_META.map((h) => ({
+    const streaks = meta.map((h) => ({
         ...h,
         streak: computeStreak(trueSets[h.field], today),
     }));
@@ -80,7 +90,13 @@ export default async function HabitudesPage() {
                     <CardTitle className="text-base">Aujourd&apos;hui</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <HabitChecklist date={today} initial={habitToday} />
+                    <HabitChecklist
+                        date={today}
+                        initial={habitToday}
+                        meta={meta}
+                        showSession={program.features.sessionHabit}
+                        sessionDone={workoutToday?.completed === true}
+                    />
                 </CardContent>
             </Card>
 
@@ -91,6 +107,7 @@ export default async function HabitudesPage() {
                 <CardContent className="flex flex-col gap-2">
                     <HabitHistoryGrid
                         days={last14}
+                        meta={meta}
                         trueDates={{
                             creatine: [...trueSets.creatine],
                             kcal3000: [...trueSets.kcal3000],

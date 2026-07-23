@@ -14,15 +14,19 @@ export function foodByKey(key: string): Food | undefined {
 export interface NutritionTotals {
     protein: number;
     calories: number;
+    fat: number;
+}
+
+export interface Macro {
+    protein: number;
+    calories: number;
+    fat: number;
 }
 
 /** Macros (par portion) d'un aliment : catalogue ou aliment perso (extraFoods). */
-export function foodMacro(
-    foodKey: string,
-    extraFoods: Food[] = [],
-): { protein: number; calories: number } | undefined {
+export function foodMacro(foodKey: string, extraFoods: Food[] = []): Macro | undefined {
     const f = BY_KEY[foodKey] ?? extraFoods.find((x) => x.key === foodKey);
-    return f ? { protein: f.protein, calories: f.calories } : undefined;
+    return f ? { protein: f.protein, calories: f.calories, fat: f.fat } : undefined;
 }
 
 /**
@@ -34,14 +38,21 @@ export interface LoggedEntry {
     portions: number;
     protein: number;
     calories: number;
+    fat: number;
 }
 
 export function totalsOfEntries(entries: LoggedEntry[]): NutritionTotals {
     let protein = 0;
     let calories = 0;
+    let fat = 0;
     for (const e of entries) {
         protein += e.protein * e.portions;
         calories += e.calories * e.portions;
+        fat += e.fat * e.portions;
     }
-    return { protein: Math.round(protein), calories: Math.round(calories) };
+    return {
+        protein: Math.round(protein),
+        calories: Math.round(calories),
+        fat: Math.round(fat),
+    };
 }

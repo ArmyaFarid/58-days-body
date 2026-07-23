@@ -7,12 +7,15 @@ import {
     AccordionContent,
 } from "@/components/ui/accordion";
 import { Card, CardContent } from "@/components/ui/card";
+import { getSession } from "@/lib/auth";
+import { getUserProgramId } from "@/lib/data/users";
 import {
     PHASES,
     PROGRESSION_LEVERS,
     BLOC2_TECHNIQUES,
     EXERCISE_RANKING,
     LEXICON,
+    getProgram,
 } from "@/lib/program";
 import {
     PROFILE,
@@ -25,8 +28,15 @@ import {
     OPTIMISATION_KEYS,
     MISTAKES,
 } from "@/lib/program/reference";
+import { FemmeProgrammeSummary } from "./femme-summary";
 
-export default function ProgrammePage() {
+export default async function ProgrammePage() {
+    const { userId } = (await getSession())!;
+    const program = getProgram(await getUserProgramId(userId));
+    if (program.id === "masse-femme") {
+        return <FemmeProgrammeSummary program={program} />;
+    }
+
     return (
         <div className="flex flex-col gap-4 p-4">
             <div className="pt-2">

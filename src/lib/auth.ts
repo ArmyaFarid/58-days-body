@@ -9,6 +9,8 @@ import {
     updateUserPassword,
 } from "@/lib/data/users";
 import { backfillOrphanData } from "@/lib/data/migrate";
+import { isInviteCodeAvailable, consumeInviteCode } from "@/lib/data/invite-codes";
+import { getProgram } from "@/lib/program";
 
 const COOKIE_NAME = "session";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 jours
@@ -73,16 +75,25 @@ export async function signup(
     username: string,
     password: string,
     inviteCode: string,
+    programId: string,
 ): Promise<{ user?: SessionUser; error?: string }> {
-    const expected = process.env.SIGNUP_INVITE_CODE;
-    if (!expected) return { error: "Inscription désactivée." };
-    if (inviteCode !== expected) return { error: "Code d'invitation invalide." };
     if (username.length < 3) return { error: "Identifiant trop court (min 3)." };
     if (password.length < 4) return { error: "Mot de passe trop court (min 4)." };
+
+    // Code valide : soit le code d'env (bootstrap), soit un code d'invitation en base.
+    const envCode = process.env.SIGNUP_INVITE_CODE;
+    const isEnvCode = Boolean(envCode) && inviteCode === envCode;
+    if (!isEnvCode && !(await isInviteCodeAvailable(inviteCode))) {
+        return { error: "Code d'invitation invalide ou déjà utilisé." };
+    }
+
     const existing = await getUserByUsername(username);
     if (existing) return { error: "Identifiant déjà pris." };
 
-    const created = await createUser(username, hashPasswordB64(password));
+    // Normalise le programme (inconnu ⇒ programme 58 par défaut).
+    const normalizedProgramId = getProgram(programId).id;
+    const created = await createUser(username, hashPasswordB64(password), normalizedProgramId);
+    if (!isEnvCode) await consumeInviteCode(inviteCode, created.id);
     return { user: { userId: created.id, username: created.username } };
 }
 

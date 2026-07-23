@@ -23,12 +23,20 @@ import {
 
 interface AddFoodDialogProps {
     customFoods: Food[];
+    /** Affiche le champ lipides (programmes qui suivent le gras). */
+    trackFat?: boolean;
     onAdded: (food: Food) => void;
     onUpdated: (food: Food) => void;
     onDeleted: (key: string) => void;
 }
 
-export function AddFoodDialog({ customFoods, onAdded, onUpdated, onDeleted }: AddFoodDialogProps) {
+export function AddFoodDialog({
+    customFoods,
+    trackFat = false,
+    onAdded,
+    onUpdated,
+    onDeleted,
+}: AddFoodDialogProps) {
     const [open, setOpen] = useState(false);
     const [editingKey, setEditingKey] = useState<string | null>(null);
     const [name, setName] = useState("");
@@ -36,6 +44,7 @@ export function AddFoodDialog({ customFoods, onAdded, onUpdated, onDeleted }: Ad
     const [metric, setMetric] = useState("");
     const [protein, setProtein] = useState("");
     const [calories, setCalories] = useState("");
+    const [fat, setFat] = useState("");
     const [category, setCategory] = useState<FoodCategory>(CATEGORIES[0]);
     const [saving, startSaving] = useTransition();
     const [deleting, startDeleting] = useTransition();
@@ -47,6 +56,7 @@ export function AddFoodDialog({ customFoods, onAdded, onUpdated, onDeleted }: Ad
         setMetric("");
         setProtein("");
         setCalories("");
+        setFat("");
         setCategory(CATEGORIES[0]);
     }
 
@@ -57,12 +67,14 @@ export function AddFoodDialog({ customFoods, onAdded, onUpdated, onDeleted }: Ad
         setMetric(food.metric);
         setProtein(String(food.protein));
         setCalories(String(food.calories));
+        setFat(String(food.fat));
         setCategory(food.category);
     }
 
     function onSubmit() {
         const p = parseFloat(protein.replace(",", "."));
         const c = parseFloat(calories.replace(",", "."));
+        const f = fat.trim() ? parseFloat(fat.replace(",", ".")) : 0;
         if (!name.trim() || !portionLabel.trim()) {
             toast.error("Nom et portion requis.");
             return;
@@ -71,12 +83,17 @@ export function AddFoodDialog({ customFoods, onAdded, onUpdated, onDeleted }: Ad
             toast.error("Protéines et calories invalides.");
             return;
         }
+        if (!Number.isFinite(f) || f < 0) {
+            toast.error("Lipides invalides.");
+            return;
+        }
         const payload = {
             name: name.trim(),
             portionLabel: portionLabel.trim(),
             metric: metric.trim(),
             protein: p,
             calories: c,
+            fat: f,
             category,
         };
         startSaving(async () => {
@@ -233,6 +250,20 @@ export function AddFoodDialog({ customFoods, onAdded, onUpdated, onDeleted }: Ad
                                 />
                             </div>
                         </div>
+                        {trackFat ? (
+                            <div className="flex flex-col gap-1.5">
+                                <Label htmlFor="food-fat">Lipides (g)</Label>
+                                <Input
+                                    id="food-fat"
+                                    type="number"
+                                    inputMode="decimal"
+                                    min={0}
+                                    value={fat}
+                                    onChange={(e) => setFat(e.target.value)}
+                                    className="h-11"
+                                />
+                            </div>
+                        ) : null}
                         <div className="flex flex-col gap-1.5">
                             <Label>Catégorie</Label>
                             <div className="flex flex-wrap gap-1.5">

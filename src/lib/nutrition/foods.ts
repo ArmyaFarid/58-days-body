@@ -22,6 +22,8 @@ export interface Food {
     protein: number;
     /** Calories (kcal) pour 1 portion. */
     calories: number;
+    /** Lipides (g) pour 1 portion. */
+    fat: number;
     category: FoodCategory;
 }
 
@@ -44,6 +46,7 @@ export const FOODS: Food[] = [
         metric: "≈250 g de chair",
         protein: 60,
         calories: 420,
+        fat: 15,
         category: "Poissons et fruits de mer",
     },
     {
@@ -53,6 +56,7 @@ export const FOODS: Food[] = [
         metric: "≈120 g",
         protein: 30,
         calories: 210,
+        fat: 8,
         category: "Poissons et fruits de mer",
     },
     {
@@ -62,6 +66,7 @@ export const FOODS: Food[] = [
         metric: "≈100 g",
         protein: 23,
         calories: 110,
+        fat: 2,
         category: "Poissons et fruits de mer",
     },
     {
@@ -71,6 +76,7 @@ export const FOODS: Food[] = [
         metric: "≈100 g",
         protein: 25,
         calories: 230,
+        fat: 13,
         category: "Poissons et fruits de mer",
     },
     {
@@ -80,6 +86,7 @@ export const FOODS: Food[] = [
         metric: "≈100 g",
         protein: 22,
         calories: 190,
+        fat: 11,
         category: "Poissons et fruits de mer",
     },
     {
@@ -89,6 +96,7 @@ export const FOODS: Food[] = [
         metric: "≈120 g",
         protein: 25,
         calories: 120,
+        fat: 2,
         category: "Poissons et fruits de mer",
     },
     {
@@ -98,6 +106,7 @@ export const FOODS: Food[] = [
         metric: "≈100 g",
         protein: 20,
         calories: 100,
+        fat: 1,
         category: "Poissons et fruits de mer",
     },
     {
@@ -107,6 +116,7 @@ export const FOODS: Food[] = [
         metric: "≈80 g",
         protein: 8,
         calories: 90,
+        fat: 1,
         category: "Poissons et fruits de mer",
     },
 
@@ -118,6 +128,7 @@ export const FOODS: Food[] = [
         metric: "≈50 g",
         protein: 6,
         calories: 75,
+        fat: 5,
         category: "Viandes et œufs",
     },
     {
@@ -127,6 +138,7 @@ export const FOODS: Food[] = [
         metric: "≈120 g",
         protein: 35,
         calories: 300,
+        fat: 16,
         category: "Viandes et œufs",
     },
     {
@@ -136,6 +148,7 @@ export const FOODS: Food[] = [
         metric: "≈120 g",
         protein: 32,
         calories: 330,
+        fat: 22,
         category: "Viandes et œufs",
     },
     {
@@ -145,6 +158,7 @@ export const FOODS: Food[] = [
         metric: "≈120 g",
         protein: 33,
         calories: 260,
+        fat: 13,
         category: "Viandes et œufs",
     },
     {
@@ -154,6 +168,7 @@ export const FOODS: Food[] = [
         metric: "≈150 g",
         protein: 14,
         calories: 300,
+        fat: 25,
         category: "Viandes et œufs",
     },
     {
@@ -163,6 +178,7 @@ export const FOODS: Food[] = [
         metric: "≈60 g",
         protein: 15,
         calories: 100,
+        fat: 4,
         category: "Viandes et œufs",
     },
     {
@@ -172,6 +188,7 @@ export const FOODS: Food[] = [
         metric: "≈120 g",
         protein: 26,
         calories: 175,
+        fat: 5,
         category: "Viandes et œufs",
     },
 
@@ -183,6 +200,7 @@ export const FOODS: Food[] = [
         metric: "250 ml",
         protein: 8,
         calories: 150,
+        fat: 8,
         category: "Produits laitiers",
     },
     {
@@ -192,6 +210,7 @@ export const FOODS: Food[] = [
         metric: "125 ml",
         protein: 8,
         calories: 170,
+        fat: 9,
         category: "Produits laitiers",
     },
     {
@@ -201,6 +220,7 @@ export const FOODS: Food[] = [
         metric: "≈150 g",
         protein: 9,
         calories: 60,
+        fat: 0,
         category: "Produits laitiers",
     },
     {
@@ -210,6 +230,7 @@ export const FOODS: Food[] = [
         metric: "≈100 g",
         protein: 4,
         calories: 90,
+        fat: 2,
         category: "Produits laitiers",
     },
     {
@@ -219,6 +240,7 @@ export const FOODS: Food[] = [
         metric: "≈120 g",
         protein: 13,
         calories: 110,
+        fat: 4,
         category: "Produits laitiers",
     },
     {
@@ -228,6 +250,7 @@ export const FOODS: Food[] = [
         metric: "≈30 g",
         protein: 7,
         calories: 110,
+        fat: 9,
         category: "Produits laitiers",
     },
     {
@@ -237,6 +260,7 @@ export const FOODS: Food[] = [
         metric: "≈30 g",
         protein: 24,
         calories: 120,
+        fat: 2,
         category: "Produits laitiers",
     },
 
@@ -248,6 +272,7 @@ export const FOODS: Food[] = [
         metric: "≈150 g",
         protein: 4,
         calories: 200,
+        fat: 1,
         category: "Glucides",
     },
     {
@@ -257,6 +282,7 @@ export const FOODS: Food[] = [
         metric: "≈90 g",
         protein: 13,
         calories: 380,
+        fat: 7,
         category: "Glucides",
     },
     {
@@ -266,6 +292,7 @@ export const FOODS: Food[] = [
         metric: "≈150 g",
         protein: 4,
         calories: 200,
+        fat: 1,
         category: "Glucides",
     },
     {
@@ -275,6 +302,7 @@ export const FOODS: Food[] = [
         metric: "≈150 g",
         protein: 3,
         calories: 160,
+        fat: 0,
         category: "Glucides",
     },
     {
@@ -284,6 +312,7 @@ export const FOODS: Food[] = [
         metric: "≈150 g",
         protein: 2,
         calories: 220,
+        fat: 0,
         category: "Glucides",
     },
     {
@@ -293,6 +322,7 @@ export const FOODS: Food[] = [
         metric: "≈120 g",
         protein: 2,
         calories: 280,
+        fat: 10,
         category: "Glucides",
     },
     {
@@ -302,6 +332,7 @@ export const FOODS: Food[] = [
         metric: "≈130 g",
         protein: 2,
         calories: 115,
+        fat: 0,
         category: "Glucides",
     },
     {
@@ -311,6 +342,7 @@ export const FOODS: Food[] = [
         metric: "≈35 g",
         protein: 3,
         calories: 80,
+        fat: 1,
         category: "Glucides",
     },
     {
@@ -320,6 +352,7 @@ export const FOODS: Food[] = [
         metric: "≈60 g",
         protein: 4,
         calories: 140,
+        fat: 4,
         category: "Glucides",
     },
     {
@@ -329,6 +362,7 @@ export const FOODS: Food[] = [
         metric: "≈150 g",
         protein: 4,
         calories: 175,
+        fat: 1,
         category: "Glucides",
     },
     {
@@ -338,6 +372,7 @@ export const FOODS: Food[] = [
         metric: "≈200 g",
         protein: 12,
         calories: 175,
+        fat: 1,
         category: "Glucides",
     },
     {
@@ -347,6 +382,7 @@ export const FOODS: Food[] = [
         metric: "≈200 g",
         protein: 10,
         calories: 190,
+        fat: 3,
         category: "Glucides",
     },
     {
@@ -356,6 +392,7 @@ export const FOODS: Food[] = [
         metric: "≈150 g",
         protein: 4,
         calories: 130,
+        fat: 2,
         category: "Glucides",
     },
 
@@ -367,6 +404,7 @@ export const FOODS: Food[] = [
         metric: "≈120 g",
         protein: 1,
         calories: 105,
+        fat: 0,
         category: "Fruits et légumes",
     },
     {
@@ -376,6 +414,7 @@ export const FOODS: Food[] = [
         metric: "≈180 g",
         protein: 0,
         calories: 95,
+        fat: 0,
         category: "Fruits et légumes",
     },
     {
@@ -385,6 +424,7 @@ export const FOODS: Food[] = [
         metric: "≈150 g",
         protein: 1,
         calories: 60,
+        fat: 0,
         category: "Fruits et légumes",
     },
     {
@@ -394,6 +434,7 @@ export const FOODS: Food[] = [
         metric: "≈120 g",
         protein: 1,
         calories: 25,
+        fat: 0,
         category: "Fruits et légumes",
     },
     {
@@ -403,6 +444,7 @@ export const FOODS: Food[] = [
         metric: "≈100 g",
         protein: 1,
         calories: 120,
+        fat: 11,
         category: "Fruits et légumes",
     },
     {
@@ -412,6 +454,7 @@ export const FOODS: Food[] = [
         metric: "≈80 g",
         protein: 2,
         calories: 40,
+        fat: 0,
         category: "Fruits et légumes",
     },
     {
@@ -421,6 +464,7 @@ export const FOODS: Food[] = [
         metric: "≈50 g",
         protein: 1,
         calories: 15,
+        fat: 0,
         category: "Fruits et légumes",
     },
     {
@@ -430,6 +474,7 @@ export const FOODS: Food[] = [
         metric: "250 ml",
         protein: 1,
         calories: 110,
+        fat: 0,
         category: "Fruits et légumes",
     },
 
@@ -441,6 +486,7 @@ export const FOODS: Food[] = [
         metric: "≈16 g",
         protein: 4,
         calories: 95,
+        fat: 8,
         category: "Lipides et extras",
     },
     {
@@ -450,6 +496,7 @@ export const FOODS: Food[] = [
         metric: "15 ml",
         protein: 0,
         calories: 120,
+        fat: 14,
         category: "Lipides et extras",
     },
     {
@@ -459,6 +506,7 @@ export const FOODS: Food[] = [
         metric: "≈14 g",
         protein: 0,
         calories: 100,
+        fat: 11,
         category: "Lipides et extras",
     },
     {
@@ -468,6 +516,7 @@ export const FOODS: Food[] = [
         metric: "≈30 g",
         protein: 3,
         calories: 130,
+        fat: 5,
         category: "Lipides et extras",
     },
     {
@@ -477,6 +526,7 @@ export const FOODS: Food[] = [
         metric: "≈21 g",
         protein: 0,
         calories: 60,
+        fat: 0,
         category: "Lipides et extras",
     },
     {
@@ -486,6 +536,7 @@ export const FOODS: Food[] = [
         metric: "≈125 ml",
         protein: 2,
         calories: 60,
+        fat: 2,
         category: "Lipides et extras",
     },
     {
@@ -495,6 +546,7 @@ export const FOODS: Food[] = [
         metric: "≈14 g",
         protein: 0,
         calories: 95,
+        fat: 10,
         category: "Lipides et extras",
     },
     {
@@ -504,6 +556,7 @@ export const FOODS: Food[] = [
         metric: "≈30 g",
         protein: 6,
         calories: 170,
+        fat: 15,
         category: "Lipides et extras",
     },
 ];

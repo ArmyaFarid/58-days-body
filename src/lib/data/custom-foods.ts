@@ -24,6 +24,7 @@ export async function getCustomFoods(userId: number): Promise<Food[]> {
         metric: r.metric,
         protein: r.protein,
         calories: r.calories,
+        fat: r.fat ?? 0,
         category: asCategory(r.category),
     }));
 }
@@ -34,6 +35,7 @@ export interface NewCustomFood {
     metric: string;
     protein: number;
     calories: number;
+    fat: number;
     category: FoodCategory;
 }
 
@@ -47,6 +49,7 @@ export async function addCustomFood(userId: number, input: NewCustomFood): Promi
         metric: input.metric,
         protein: input.protein,
         calories: input.calories,
+        fat: input.fat,
         category: input.category,
     });
     return { key, ...input };
@@ -65,6 +68,7 @@ export async function updateCustomFood(
             metric: input.metric,
             protein: input.protein,
             calories: input.calories,
+            fat: input.fat,
             category: input.category,
         })
         .where(and(eq(customFoods.userId, userId), eq(customFoods.key, key)));

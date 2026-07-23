@@ -31,6 +31,7 @@ export async function getLoggedEntries(userId: number, date: string): Promise<Lo
                 portions: foodLogs.portions,
                 protein: foodLogs.protein,
                 calories: foodLogs.calories,
+                fat: foodLogs.fat,
             })
             .from(foodLogs)
             .where(and(eq(foodLogs.userId, userId), eq(foodLogs.date, date))),
@@ -40,13 +41,25 @@ export async function getLoggedEntries(userId: number, date: string): Promise<Lo
 }
 
 function resolveEntry(
-    r: { foodKey: string; portions: number; protein: number | null; calories: number | null },
+    r: {
+        foodKey: string;
+        portions: number;
+        protein: number | null;
+        calories: number | null;
+        fat: number | null;
+    },
     custom: Awaited<ReturnType<typeof getCustomFoods>>,
 ): LoggedEntry {
     if (r.protein != null && r.calories != null) {
-        return { foodKey: r.foodKey, portions: r.portions, protein: r.protein, calories: r.calories };
+        return {
+            foodKey: r.foodKey,
+            portions: r.portions,
+            protein: r.protein,
+            calories: r.calories,
+            fat: r.fat ?? 0,
+        };
     }
-    const macro = foodMacro(r.foodKey, custom) ?? { protein: 0, calories: 0 };
+    const macro = foodMacro(r.foodKey, custom) ?? { protein: 0, calories: 0, fat: 0 };
     return { foodKey: r.foodKey, portions: r.portions, ...macro };
 }
 
@@ -61,6 +74,7 @@ export async function setFoodPortion(
     portions: number,
     protein: number,
     calories: number,
+    fat: number,
 ): Promise<void> {
     if (portions <= 0) {
         await db
@@ -76,10 +90,10 @@ export async function setFoodPortion(
     }
     await db
         .insert(foodLogs)
-        .values({ userId, date, foodKey, portions, protein, calories })
+        .values({ userId, date, foodKey, portions, protein, calories, fat })
         .onConflictDoUpdate({
             target: [foodLogs.userId, foodLogs.date, foodLogs.foodKey],
-            set: { portions, protein, calories },
+            set: { portions, protein, calories, fat },
         });
 }
 
@@ -100,6 +114,7 @@ export async function getNutritionHistory(
                 portions: foodLogs.portions,
                 protein: foodLogs.protein,
                 calories: foodLogs.calories,
+                fat: foodLogs.fat,
             })
             .from(foodLogs)
             .where(eq(foodLogs.userId, userId))

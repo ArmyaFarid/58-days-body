@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUserId, changePassword } from "@/lib/auth";
-import { setStartDate, getNutritionGoals, setNutritionGoals } from "@/lib/data/settings";
+import { setStartDate, getNutritionGoals, updateSettings } from "@/lib/data/settings";
+import { createInviteCode } from "@/lib/data/invite-codes";
 import { getFoodPortions, getLoggedEntries, setFoodPortion } from "@/lib/data/nutrition";
 import {
     getCustomFoods,
@@ -145,8 +146,8 @@ async function syncNutritionHabits(userId: number, date: string) {
 }
 
 /** Macros courantes d'un aliment (catalogue ou perso) — figées à la saisie. */
-function macroOf(foodKey: string, custom: Food[]): { protein: number; calories: number } {
-    return foodMacro(foodKey, custom) ?? { protein: 0, calories: 0 };
+function macroOf(foodKey: string, custom: Food[]): { protein: number; calories: number; fat: number } {
+    return foodMacro(foodKey, custom) ?? { protein: 0, calories: 0, fat: 0 };
 }
 
 const foodPortionSchema = z.object({
@@ -159,8 +160,8 @@ export async function setFoodPortionAction(input: z.infer<typeof foodPortionSche
     const userId = await requireUserId();
     const { date, foodKey, portions } = foodPortionSchema.parse(input);
     const custom = await getCustomFoods(userId);
-    const { protein, calories } = macroOf(foodKey, custom);
-    await setFoodPortion(userId, date, foodKey, portions, protein, calories);
+    const { protein, calories, fat } = macroOf(foodKey, custom);
+    await setFoodPortion(userId, date, foodKey, portions, protein, calories, fat);
     await syncNutritionHabits(userId, date);
     revalidatePath("/");
     revalidatePath("/habitudes");
@@ -182,8 +183,8 @@ export async function applyPresetAction(date: string, presetKey: string) {
     const [current, custom] = await Promise.all([getFoodPortions(userId, d), getCustomFoods(userId)]);
     for (const item of preset.items) {
         const next = (current[item.foodKey] ?? 0) + item.portions;
-        const { protein, calories } = macroOf(item.foodKey, custom);
-        await setFoodPortion(userId, d, item.foodKey, next, protein, calories);
+        const { protein, calories, fat } = macroOf(item.foodKey, custom);
+        await setFoodPortion(userId, d, item.foodKey, next, protein, calories, fat);
     }
     await syncNutritionHabits(userId, d);
     revalidatePath("/");
@@ -191,17 +192,31 @@ export async function applyPresetAction(date: string, presetKey: string) {
     revalidatePath("/suivi");
 }
 
+const optInt = (max: number) => z.number().int().min(0).max(max).optional();
 const goalsSchema = z.object({
-    proteinGoal: z.number().int().min(1).max(1000),
-    calorieGoal: z.number().int().min(1).max(20000),
+    proteinGoal: optInt(1000),
+    calorieGoal: optInt(20000),
+    fatGoal: optInt(1000),
+    proteinGoal2: optInt(1000),
+    calorieGoal2: optInt(20000),
+    fatGoal2: optInt(1000),
+    targetWeightKg: z.number().min(20).max(400).optional(),
 });
 
 export async function setNutritionGoalsAction(input: z.infer<typeof goalsSchema>) {
     const userId = await requireUserId();
-    const { proteinGoal, calorieGoal } = goalsSchema.parse(input);
-    await setNutritionGoals(userId, proteinGoal, calorieGoal);
+    const patch = goalsSchema.parse(input);
+    await updateSettings(userId, patch);
     revalidatePath("/");
     revalidatePath("/parametres");
+    revalidatePath("/suivi");
+}
+
+export async function generateInviteCodeAction() {
+    const userId = await requireUserId();
+    const code = await createInviteCode(userId);
+    revalidatePath("/parametres");
+    return code;
 }
 
 const newFoodSchema = z.object({
@@ -210,6 +225,7 @@ const newFoodSchema = z.object({
     metric: z.string().trim().max(40),
     protein: z.number().min(0).max(500),
     calories: z.number().min(0).max(5000),
+    fat: z.number().min(0).max(500),
     category: z.string().refine((v) => (CATEGORIES as string[]).includes(v), "Catégorie invalide"),
 });
 
@@ -222,6 +238,7 @@ export async function addCustomFoodAction(input: z.infer<typeof newFoodSchema>) 
         metric: parsed.metric,
         protein: parsed.protein,
         calories: parsed.calories,
+        fat: parsed.fat,
         category: parsed.category as FoodCategory,
     });
     revalidatePath("/");
@@ -239,6 +256,7 @@ export async function updateCustomFoodAction(input: z.infer<typeof editFoodSchem
         metric: parsed.metric,
         protein: parsed.protein,
         calories: parsed.calories,
+        fat: parsed.fat,
         category: parsed.category as FoodCategory,
     });
     revalidatePath("/");
@@ -289,8 +307,8 @@ export async function applyCustomPresetAction(date: string, presetId: number) {
     const [current, custom] = await Promise.all([getFoodPortions(userId, d), getCustomFoods(userId)]);
     for (const item of items) {
         const next = (current[item.foodKey] ?? 0) + item.portions;
-        const { protein, calories } = macroOf(item.foodKey, custom);
-        await setFoodPortion(userId, d, item.foodKey, next, protein, calories);
+        const { protein, calories, fat } = macroOf(item.foodKey, custom);
+        await setFoodPortion(userId, d, item.foodKey, next, protein, calories, fat);
     }
     await syncNutritionHabits(userId, d);
     revalidatePath("/");

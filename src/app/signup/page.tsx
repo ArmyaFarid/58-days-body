@@ -6,10 +6,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { UserPlus, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PROGRAM_OPTIONS } from "@/lib/program";
 
 const schema = z.object({
     username: z.string().min(3, "Min. 3 caractères"),
@@ -22,6 +24,7 @@ type Values = z.infer<typeof schema>;
 export default function SignupPage() {
     const router = useRouter();
     const [error, setError] = useState<string | null>(null);
+    const [programId, setProgramId] = useState<string>(PROGRAM_OPTIONS[0].id);
     const {
         register,
         handleSubmit,
@@ -36,7 +39,7 @@ export default function SignupPage() {
         const res = await fetch("/api/auth/signup", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(values),
+            body: JSON.stringify({ ...values, programId }),
         });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
@@ -97,6 +100,26 @@ export default function SignupPage() {
                                     {errors.inviteCode.message}
                                 </p>
                             ) : null}
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <Label>Programme</Label>
+                            <div className="flex flex-col gap-2">
+                                {PROGRAM_OPTIONS.map((opt) => (
+                                    <button
+                                        key={opt.id}
+                                        type="button"
+                                        onClick={() => setProgramId(opt.id)}
+                                        className={cn(
+                                            "rounded-lg border p-3 text-left text-sm transition-colors",
+                                            programId === opt.id
+                                                ? "border-primary bg-primary/10 font-medium"
+                                                : "border-border",
+                                        )}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                         {error ? <p className="text-sm text-destructive">{error}</p> : null}
                         <Button type="submit" className="h-11 w-full" disabled={isSubmitting}>

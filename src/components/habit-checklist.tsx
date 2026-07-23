@@ -5,19 +5,47 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
 import { setHabitAction } from "@/lib/actions";
-import { HABIT_META } from "@/lib/habits-meta";
+import type { HabitMeta } from "@/lib/habits-meta";
 import type { HabitDay, HabitField } from "@/lib/data/habits";
 
 interface HabitChecklistProps {
     date: string;
     initial: HabitDay;
+    meta: HabitMeta[];
+    /** Affiche une ligne « Séance faite » (dérivée de la complétion du jour). */
+    showSession?: boolean;
+    sessionDone?: boolean;
 }
 
-// Ces habitudes sont pilotées automatiquement par le tracker nutrition
-// (elles se cochent seules quand l'objectif du jour est atteint).
-const AUTO_FIELDS: HabitField[] = ["protein140", "kcal3000"];
+function AutoRow({ done, label, hint }: { done: boolean; label: string; hint: string }) {
+    return (
+        <div
+            className={cn(
+                "flex w-full items-center gap-3 rounded-lg border p-3 text-left",
+                done ? "border-primary/50 bg-primary/10" : "border-border",
+            )}
+        >
+            <span
+                className={cn(
+                    "flex size-6 shrink-0 items-center justify-center rounded-md border",
+                    done ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40",
+                )}
+            >
+                {done ? <Check className="size-4" /> : null}
+            </span>
+            <span className={cn("text-sm", done && "text-foreground")}>{label}</span>
+            <span className="text-muted-foreground ml-auto text-xs">{hint}</span>
+        </div>
+    );
+}
 
-export function HabitChecklist({ date, initial }: HabitChecklistProps) {
+export function HabitChecklist({
+    date,
+    initial,
+    meta,
+    showSession = false,
+    sessionDone = false,
+}: HabitChecklistProps) {
     const [state, setState] = useState(initial);
     const [, startTransition] = useTransition();
 
@@ -36,36 +64,12 @@ export function HabitChecklist({ date, initial }: HabitChecklistProps) {
 
     return (
         <ul className="flex flex-col gap-2">
-            {HABIT_META.map(({ field, label }) => {
+            {meta.map(({ field, label, auto }) => {
                 const done = state[field];
-                const auto = AUTO_FIELDS.includes(field);
-                const inner = (
-                    <>
-                        <span
-                            className={cn(
-                                "flex size-6 shrink-0 items-center justify-center rounded-md border",
-                                done ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40",
-                            )}
-                        >
-                            {done ? <Check className="size-4" /> : null}
-                        </span>
-                        <span className={cn("text-sm", done && "text-foreground")}>{label}</span>
-                        {auto ? (
-                            <span className="text-muted-foreground ml-auto text-xs">auto · nutrition</span>
-                        ) : null}
-                    </>
-                );
                 return (
                     <li key={field}>
                         {auto ? (
-                            <div
-                                className={cn(
-                                    "flex w-full items-center gap-3 rounded-lg border p-3 text-left",
-                                    done ? "border-primary/50 bg-primary/10" : "border-border",
-                                )}
-                            >
-                                {inner}
-                            </div>
+                            <AutoRow done={done} label={label} hint="auto · nutrition" />
                         ) : (
                             <button
                                 type="button"
@@ -75,12 +79,27 @@ export function HabitChecklist({ date, initial }: HabitChecklistProps) {
                                     done ? "border-primary/50 bg-primary/10" : "border-border",
                                 )}
                             >
-                                {inner}
+                                <span
+                                    className={cn(
+                                        "flex size-6 shrink-0 items-center justify-center rounded-md border",
+                                        done
+                                            ? "border-primary bg-primary text-primary-foreground"
+                                            : "border-muted-foreground/40",
+                                    )}
+                                >
+                                    {done ? <Check className="size-4" /> : null}
+                                </span>
+                                <span className={cn("text-sm", done && "text-foreground")}>{label}</span>
                             </button>
                         )}
                     </li>
                 );
             })}
+            {showSession ? (
+                <li>
+                    <AutoRow done={sessionDone} label="Séance faite" hint="auto · séance" />
+                </li>
+            ) : null}
         </ul>
     );
 }
