@@ -335,6 +335,19 @@ const DRAWINGS: Record<string, Drawing> = {
             segments: [[34, 58, 54, 86], [54, 86, 42, 94], [54, 86, 74, 94], [34, 58, 24, 74]],
         },
     },
+    "pont-fessier-unilateral": {
+        equip: { segments: [[24, 96, 92, 96]] },
+        a: {
+            // Hanches basses : dos au sol, une jambe pliée (pied à plat), l'autre tendue.
+            head: [28, 86, 6],
+            segments: [[33, 88, 58, 90], [58, 90, 66, 74], [66, 74, 66, 96], [58, 90, 86, 82], [33, 88, 44, 96]],
+        },
+        b: {
+            // Hanches hautes : ligne épaules-hanches-genou, jambe libre levée.
+            head: [28, 86, 6],
+            segments: [[33, 88, 58, 72], [58, 72, 66, 74], [66, 74, 66, 96], [58, 72, 82, 56], [33, 88, 44, 96]],
+        },
+    },
     mollets: {
         equip: { segments: [[40, 88, 58, 88], [58, 88, 58, 104]] },
         a: {

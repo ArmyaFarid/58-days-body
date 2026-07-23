@@ -1,6 +1,7 @@
 import { differenceInCalendarDays, parseISO } from "date-fns";
 import type { DayType, Phase, Exercise } from "./types";
 import { SESSIONS } from "./sessions";
+import { LEXICON } from "./lexicon";
 
 export * from "./types";
 export { SESSIONS } from "./sessions";
@@ -163,7 +164,9 @@ export const ALL_EXERCISES: ExerciseRef[] = (() => {
 })();
 
 export function getExerciseName(key: string): string {
-    return ALL_EXERCISES.find((e) => e.key === key)?.name ?? key;
+    // Fallback lexique : garde un libellé propre pour les exercices retirés du
+    // split (ex. nordic-curl) mais encore présents dans l'historique.
+    return ALL_EXERCISES.find((e) => e.key === key)?.name ?? LEXICON[key]?.name ?? key;
 }
 
 /** Clés de tractions — pour le jalon « tractions strictes » (sans assistance). */

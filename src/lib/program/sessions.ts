@@ -159,11 +159,11 @@ export const SESSIONS: Record<string, Session> = {
                 lexiconKey: "good-morning",
             },
             {
-                key: "nordic-curl",
-                name: "Nordic curl assisté (pieds sous le divan)",
+                key: "pont-fessier-unilateral",
+                name: "Pont fessier à une jambe",
                 sets: "3",
-                reps: "4–8",
-                lexiconKey: "nordic-curl",
+                reps: "12–15/jambe",
+                lexiconKey: "pont-fessier-unilateral",
             },
             {
                 key: "mollets",

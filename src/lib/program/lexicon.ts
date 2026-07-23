@@ -120,6 +120,10 @@ export const LEXICON: Record<string, LexiconEntry> = {
         name: "Nordic curl assisté",
         text: "À genoux, chevilles coincées sous le divan, corps droit des genoux à la tête. Laisse-toi tomber vers l'avant le plus lentement possible en freinant avec l'arrière des cuisses, amortis avec les mains, repousse-toi pour revenir. Brutal mais très efficace pour les ischio-jambiers.",
     },
+    "pont-fessier-unilateral": {
+        name: "Pont fessier à une jambe",
+        text: "Allongé sur le dos, plie une jambe avec le pied bien à plat au sol, talon à environ 30 cm des fesses. Tends l'autre jambe en l'air, bras le long du corps. Pousse dans ton talon (pas la pointe) et lève les hanches jusqu'à former une ligne droite épaules-hanches-genou. Serre le fessier fort en haut, tiens 1 seconde, puis redescends lentement (2-3 s) sans poser complètement les fesses au sol. Où le sentir : fessier et arrière de la cuisse de la jambe au sol ; pour cibler davantage l'arrière de la cuisse, éloigne le pied des fesses. Erreurs à éviter : cambrer le bas du dos pour monter plus haut (garde les abdos serrés) · pousser sur la pointe du pied · s'écraser au sol entre les reps. Progression : pied surélevé sur une chaise, puis objet lourd (sac de livres) posé sur les hanches.",
+    },
     mollets: {
         name: "Mollets une jambe sur une marche",
         text: "L'avant du pied sur le bord d'une marche, talon dans le vide, sur une jambe. Descends le talon le plus bas possible, monte sur la pointe le plus haut possible.",
