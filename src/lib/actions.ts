@@ -5,7 +5,8 @@ import { z } from "zod";
 import { requireUserId, changePassword, getSession, setActingUser } from "@/lib/auth";
 import { setStartDate, getNutritionGoals, updateSettings } from "@/lib/data/settings";
 import { createInviteCode, canActAs } from "@/lib/data/invite-codes";
-import { getUserById } from "@/lib/data/users";
+import { getUserById, setUserProgram, deleteUser } from "@/lib/data/users";
+import { getProgram } from "@/lib/program";
 import { getFoodPortions, getLoggedEntries, setFoodPortion } from "@/lib/data/nutrition";
 import {
     getCustomFoods,
@@ -260,6 +261,33 @@ export async function switchToUserAction(targetUserId: number) {
 export async function switchBackAction() {
     const session = await getSession();
     if (!session) throw new Error("Non authentifié.");
+    const owner = { userId: session.ownerUserId, username: session.ownerUsername };
+    await setActingUser(owner, owner);
+    revalidatePath("/", "layout");
+}
+
+/** Change le programme du compte actif (corrige un mauvais choix à l'inscription). */
+export async function setProgramAction(programId: string) {
+    const userId = await requireUserId();
+    const normalized = getProgram(z.string().min(1).max(32).parse(programId)).id;
+    await setUserProgram(userId, normalized);
+    revalidatePath("/", "layout");
+}
+
+/** Supprime définitivement un compte invité (et toutes ses données). */
+export async function deleteUserAction(targetUserId: number) {
+    const session = await getSession();
+    if (!session) throw new Error("Non authentifié.");
+    const target = z.number().int().positive().parse(targetUserId);
+    if (target === session.ownerUserId) throw new Error("Impossible de supprimer son propre compte.");
+    const allowed = await canActAs(session.ownerUserId, target);
+    if (!allowed) throw new Error("Accès refusé.");
+
+    // Nettoie données + blobs photos, puis supprime le compte (cascade pour le reste).
+    await resetAllData(target);
+    await deleteUser(target);
+
+    // Si on consultait ce compte, revenir au propriétaire.
     const owner = { userId: session.ownerUserId, username: session.ownerUsername };
     await setActingUser(owner, owner);
     revalidatePath("/", "layout");

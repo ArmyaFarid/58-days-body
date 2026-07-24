@@ -47,6 +47,15 @@ export async function getUserProgramId(id: number): Promise<string | null> {
     return rows[0]?.programId ?? null;
 }
 
+export async function setUserProgram(id: number, programId: string): Promise<void> {
+    await db.update(users).set({ programId }).where(eq(users.id, id));
+}
+
+/** Supprime un compte. Les données liées partent en cascade (voir schéma). */
+export async function deleteUser(id: number): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+}
+
 export async function updateUserPassword(userId: number, passwordHashB64: string): Promise<void> {
     await db.update(users).set({ passwordHashB64 }).where(eq(users.id, userId));
 }

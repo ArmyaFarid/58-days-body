@@ -6,10 +6,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2, KeyRound, TriangleAlert, Palette, Target, Ticket, Copy, Users } from "lucide-react";
+import { Loader2, KeyRound, TriangleAlert, Palette, Target, Ticket, Copy, Users, Dumbbell } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppearanceSettings } from "@/components/appearance-settings";
 import { AccountSwitcher } from "@/components/account-switcher";
+import { ProgramSelector } from "@/components/program-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,6 +56,7 @@ interface AccountsInfo {
 }
 
 interface SettingsViewProps {
+    programId: string;
     features: { trackFat: boolean; targetWeight: boolean; multiPhase: boolean };
     settings: {
         targetWeightKg: number | null;
@@ -65,7 +67,7 @@ interface SettingsViewProps {
     accounts?: AccountsInfo;
 }
 
-export function SettingsView({ features, settings, inviteCodes, accounts }: SettingsViewProps) {
+export function SettingsView({ programId, features, settings, inviteCodes, accounts }: SettingsViewProps) {
     const router = useRouter();
     const {
         register,
@@ -209,6 +211,18 @@ export function SettingsView({ features, settings, inviteCodes, accounts }: Sett
                     </CardContent>
                 </Card>
             ) : null}
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                        <Dumbbell className="size-4" />
+                        Programme
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ProgramSelector current={programId} />
+                </CardContent>
+            </Card>
 
             <Card>
                 <CardHeader>

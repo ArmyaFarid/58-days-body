@@ -18,6 +18,7 @@ export default async function ParametresPage() {
 
     return (
         <SettingsView
+            programId={program.id}
             features={{
                 trackFat: program.features.trackFat,
                 targetWeight: program.features.targetWeight,
