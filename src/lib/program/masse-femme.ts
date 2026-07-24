@@ -298,6 +298,7 @@ export const MASSE_FEMME: Program = {
         measurementsPrimary: true,
         nutritionFirst: true,
         sessionHabit: true,
+        variants: false,
     },
     habitFields: ["kcal3000", "protein140", "sleepBefore23"],
     habitLabels: {

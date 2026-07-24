@@ -14,7 +14,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { saveSetLogAction } from "@/lib/actions";
+import { saveSetLogAction, setExerciseVariantAction } from "@/lib/actions";
 import { ExerciseSvg, hasExerciseSvg } from "@/components/exercise-svg";
 import type { ExerciseBlock } from "./types";
 
@@ -50,6 +50,8 @@ export function ExerciseCard({
     unitLabel,
     onSetSaved,
 }: ExerciseCardProps) {
+    const [variant, setVariant] = useState<string | null>(block.variant ?? block.lastVariant);
+
     return (
         <Card>
             <CardHeader className="gap-1">
@@ -70,6 +72,16 @@ export function ExerciseCard({
                         {block.intensification}
                     </p>
                 ) : null}
+                {block.variantsEnabled ? (
+                    <VariantSelector
+                        sessionId={sessionId}
+                        exerciseKey={block.key}
+                        options={block.variants}
+                        value={variant}
+                        lastVariant={block.lastVariant}
+                        onChange={setVariant}
+                    />
+                ) : null}
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
                 {Array.from({ length: block.setCount }).map((_, i) => (
@@ -81,6 +93,7 @@ export function ExerciseCard({
                         label={`${unitLabel} ${i + 1}`}
                         bandMode={block.bandMode}
                         recommendedBand={block.band}
+                        variant={variant}
                         logged={block.logged[i]}
                         last={block.last[i]}
                         onSaved={onSetSaved}
@@ -91,6 +104,111 @@ export function ExerciseCard({
     );
 }
 
+function VariantSelector({
+    sessionId,
+    exerciseKey,
+    options,
+    value,
+    lastVariant,
+    onChange,
+}: {
+    sessionId: number;
+    exerciseKey: string;
+    options: string[];
+    value: string | null;
+    lastVariant: string | null;
+    onChange: (v: string | null) => void;
+}) {
+    const [customOpen, setCustomOpen] = useState(false);
+    const [customText, setCustomText] = useState("");
+    const [, startSaving] = useTransition();
+
+    // Options affichées : celles du catalogue + la valeur courante si personnalisée.
+    const chips = [...options];
+    if (value && !chips.includes(value)) chips.push(value);
+
+    function choose(v: string | null) {
+        onChange(v);
+        setCustomOpen(false);
+        startSaving(async () => {
+            try {
+                await setExerciseVariantAction({ sessionId, exerciseKey, variant: v });
+            } catch {
+                toast.error("Échec de l'enregistrement de la variante.");
+            }
+        });
+    }
+
+    function submitCustom() {
+        const v = customText.trim();
+        if (!v) return;
+        setCustomText("");
+        choose(v);
+    }
+
+    return (
+        <div className="flex flex-col gap-1.5">
+            <span className="text-muted-foreground text-[11px] font-medium uppercase tracking-wide">
+                Variante
+                {lastVariant ? (
+                    <span className="ml-1 normal-case">· la dernière fois : {lastVariant}</span>
+                ) : null}
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+                <button
+                    type="button"
+                    onClick={() => choose(null)}
+                    className={cn(
+                        "rounded-md px-2.5 py-1.5 text-sm transition-colors",
+                        value == null ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70",
+                    )}
+                >
+                    Standard
+                </button>
+                {chips.map((o) => (
+                    <button
+                        key={o}
+                        type="button"
+                        onClick={() => choose(o)}
+                        className={cn(
+                            "rounded-md px-2.5 py-1.5 text-sm transition-colors",
+                            value === o ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70",
+                        )}
+                    >
+                        {o}
+                    </button>
+                ))}
+                <button
+                    type="button"
+                    onClick={() => setCustomOpen((v) => !v)}
+                    className="bg-muted hover:bg-muted/70 rounded-md px-2.5 py-1.5 text-sm transition-colors"
+                >
+                    Autre…
+                </button>
+            </div>
+            {customOpen ? (
+                <div className="flex gap-2">
+                    <Input
+                        value={customText}
+                        onChange={(e) => setCustomText(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();
+                                submitCustom();
+                            }
+                        }}
+                        placeholder="Ex. pieds surélevés, tempo 4 s…"
+                        className="h-9"
+                    />
+                    <Button type="button" variant="outline" className="h-9 shrink-0" onClick={submitCustom}>
+                        OK
+                    </Button>
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
 interface SetRowProps {
     sessionId: number;
     exerciseKey: string;
@@ -98,6 +216,7 @@ interface SetRowProps {
     label: string;
     bandMode: ExerciseBlock["bandMode"];
     recommendedBand?: string;
+    variant: string | null;
     logged?: { reps: number | null; band: string | null };
     last?: { reps: number | null; band: string | null };
     onSaved: () => void;
@@ -110,6 +229,7 @@ function SetRow({
     label,
     bandMode,
     recommendedBand,
+    variant,
     logged,
     last,
     onSaved,
@@ -148,7 +268,7 @@ function SetRow({
                     setIndex,
                     reps: reps,
                     band: band,
-                    variant: null,
+                    variant: variant,
                     notes: null,
                 });
                 setSaved(true);

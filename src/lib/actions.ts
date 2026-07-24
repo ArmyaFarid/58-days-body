@@ -28,7 +28,7 @@ import {
 } from "@/lib/nutrition";
 import { upsertWeight } from "@/lib/data/weight";
 import { setHabit, type HabitField } from "@/lib/data/habits";
-import { saveSetLog, setSessionCompleted } from "@/lib/data/workout";
+import { saveSetLog, setSessionCompleted, updateExerciseVariant } from "@/lib/data/workout";
 import { deletePhoto } from "@/lib/data/photos";
 import { upsertMeasurement } from "@/lib/data/measurements";
 import { resetAllData } from "@/lib/data/reset";
@@ -83,6 +83,21 @@ export async function saveSetLogAction(input: z.infer<typeof setLogSchema>) {
     const parsed = setLogSchema.parse(input);
     await saveSetLog({ userId, ...parsed });
     revalidatePath("/seance");
+}
+
+const variantSchema = z.object({
+    sessionId: z.number().int().positive(),
+    exerciseKey: z.string().min(1).max(64),
+    variant: z.string().max(64).nullable(),
+});
+
+export async function setExerciseVariantAction(input: z.infer<typeof variantSchema>) {
+    const userId = await requireUserId();
+    const { sessionId, exerciseKey, variant } = variantSchema.parse(input);
+    const clean = variant && variant.trim() ? variant.trim() : null;
+    await updateExerciseVariant(userId, sessionId, exerciseKey, clean);
+    revalidatePath("/seance");
+    revalidatePath("/suivi");
 }
 
 export async function completeSessionAction(sessionId: number, completed: boolean) {

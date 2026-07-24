@@ -87,12 +87,17 @@ export function PerfHistoryView({ exercises, histories, tractionKeys }: PerfHist
             <div className="flex flex-col gap-2">
                 {entries.map((entry) => (
                     <Card key={entry.date}>
-                        <CardHeader className="flex-row items-center justify-between py-3">
+                        <CardHeader className="flex-row items-center justify-between gap-2 py-3">
                             <CardTitle className="text-sm">{formatShort(entry.date)}</CardTitle>
-                            {selectedIsTraction &&
-                            entry.sets.some((s) => s.reps != null && isStrictSet(s.band)) ? (
-                                <Badge className="bg-emerald-500/15 text-emerald-500">strictes</Badge>
-                            ) : null}
+                            <div className="flex items-center gap-1.5">
+                                {entry.variant ? (
+                                    <Badge variant="secondary">{entry.variant}</Badge>
+                                ) : null}
+                                {selectedIsTraction &&
+                                entry.sets.some((s) => s.reps != null && isStrictSet(s.band)) ? (
+                                    <Badge className="bg-emerald-500/15 text-emerald-500">strictes</Badge>
+                                ) : null}
+                            </div>
                         </CardHeader>
                         <CardContent className="flex flex-wrap gap-1.5 pb-3">
                             {entry.sets

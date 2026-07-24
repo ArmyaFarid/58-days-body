@@ -9,6 +9,7 @@ export * from "./types";
 export { SESSIONS } from "./sessions";
 export { LEXICON, youtubeSearchUrl } from "./lexicon";
 export { MASSE_FEMME } from "./masse-femme";
+export { EXERCISE_VARIANTS, variantsFor } from "./variants";
 
 export const PROGRAM_LENGTH = 58;
 
@@ -209,6 +210,7 @@ export const PROGRAMME_58: Program = {
         measurementsPrimary: false,
         nutritionFirst: false,
         sessionHabit: false,
+        variants: true,
     },
     habitFields: ["creatine", "kcal3000", "protein140", "sleepBefore23"],
     habitLabels: {

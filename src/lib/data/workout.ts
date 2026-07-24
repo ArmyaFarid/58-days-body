@@ -152,6 +152,26 @@ export async function saveSetLog(input: SaveSetInput): Promise<void> {
         });
 }
 
+/** Applique une variante à toutes les séries déjà loggées d'un exercice (session). */
+export async function updateExerciseVariant(
+    userId: number,
+    sessionId: number,
+    exerciseKey: string,
+    variant: string | null,
+): Promise<void> {
+    const owned = await db
+        .select({ id: workoutSessions.id })
+        .from(workoutSessions)
+        .where(and(eq(workoutSessions.id, sessionId), eq(workoutSessions.userId, userId)))
+        .limit(1);
+    if (!owned[0]) throw new Error("Séance introuvable.");
+
+    await db
+        .update(setLogs)
+        .set({ variant })
+        .where(and(eq(setLogs.sessionId, sessionId), eq(setLogs.exerciseKey, exerciseKey)));
+}
+
 export async function setSessionCompleted(
     userId: number,
     sessionId: number,
@@ -165,6 +185,8 @@ export async function setSessionCompleted(
 
 export interface ExerciseHistoryEntry {
     date: string;
+    /** Variante/complexité de la séance (partagée par les séries). */
+    variant: string | null;
     sets: { setIndex: number; reps: number | null; band: string | null }[];
 }
 
@@ -178,6 +200,7 @@ export async function getAllExerciseHistories(
             setIndex: setLogs.setIndex,
             reps: setLogs.reps,
             band: setLogs.band,
+            variant: setLogs.variant,
         })
         .from(setLogs)
         .innerJoin(workoutSessions, eq(setLogs.sessionId, workoutSessions.id))
@@ -189,9 +212,10 @@ export async function getAllExerciseHistories(
         const entries = (result[r.exerciseKey] ??= []);
         let entry = entries.find((e) => e.date === r.date);
         if (!entry) {
-            entry = { date: r.date, sets: [] };
+            entry = { date: r.date, variant: null, sets: [] };
             entries.push(entry);
         }
+        if (r.variant && !entry.variant) entry.variant = r.variant;
         entry.sets.push({ setIndex: r.setIndex, reps: r.reps, band: r.band });
     }
     return result;

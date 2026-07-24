@@ -19,6 +19,7 @@ import {
     parseSetCount,
     getBandMode,
     youtubeSearchUrl,
+    variantsFor,
 } from "@/lib/program";
 
 function resolveDate(raw: string | undefined, today: string): string {
@@ -74,14 +75,17 @@ export default async function SeancePage({
             const lexicon = program.lexicon[ex.lexiconKey];
             const last = await getLastPerformance(userId, ex.key, selectedDate);
 
+            const todayForEx = todayLogs.filter((t) => t.exerciseKey === ex.key);
             const loggedMap: Record<number, LoggedSet> = {};
-            for (const l of todayLogs.filter((t) => t.exerciseKey === ex.key)) {
+            for (const l of todayForEx) {
                 loggedMap[l.setIndex] = { reps: l.reps, band: l.band };
             }
             const lastMap: Record<number, LoggedSet> = {};
             for (const l of last) {
                 lastMap[l.setIndex] = { reps: l.reps, band: l.band };
             }
+            const todayVariant = todayForEx.find((t) => t.variant)?.variant ?? null;
+            const lastVariant = last.find((t) => t.variant)?.variant ?? null;
 
             return {
                 key: ex.key,
@@ -99,6 +103,10 @@ export default async function SeancePage({
                 setCount: parseSetCount(ex.sets),
                 logged: loggedMap,
                 last: lastMap,
+                variantsEnabled: program.features.variants,
+                variants: variantsFor(ex.key),
+                variant: todayVariant,
+                lastVariant,
             };
         }),
     );

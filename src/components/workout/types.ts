@@ -21,4 +21,12 @@ export interface ExerciseBlock {
     logged: Record<number, LoggedSet>;
     /** Perf de la dernière fois, indexée par numéro de série. */
     last: Record<number, LoggedSet>;
+    /** Sélecteur de variante activé pour ce programme. */
+    variantsEnabled: boolean;
+    /** Échelle de variantes prédéfinies (crans plus durs). */
+    variants: string[];
+    /** Variante retenue pour cette séance (partagée par les séries). */
+    variant: string | null;
+    /** Variante de la dernière séance de cet exercice. */
+    lastVariant: string | null;
 }

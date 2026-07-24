@@ -74,6 +74,8 @@ export interface ProgramFeatures {
     nutritionFirst: boolean;
     /** Case « séance faite » (dérivée) dans la checklist. */
     sessionHabit: boolean;
+    /** Sélecteur de variante/complexité par exercice (suivi + affiché). */
+    variants: boolean;
 }
 
 /** Phase courante affichée à l'accueil. */
