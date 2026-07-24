@@ -1,7 +1,7 @@
 import "server-only";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { inviteCodes } from "@/lib/db/schema";
+import { inviteCodes, users } from "@/lib/db/schema";
 
 function randomCode(): string {
     // Code court, lisible (sans caractères ambigus), ex. « K7P2-9QMX ».
@@ -38,6 +38,28 @@ export async function getInviteCodes(createdBy: number): Promise<
         .where(eq(inviteCodes.createdBy, createdBy))
         .orderBy(inviteCodes.createdAt);
     return rows.reverse();
+}
+
+/** Comptes créés via une invitation de `ownerId` (que le propriétaire peut consulter). */
+export async function getInvitedUsers(ownerId: number): Promise<{ id: number; username: string }[]> {
+    const rows = await db
+        .selectDistinct({ id: users.id, username: users.username })
+        .from(inviteCodes)
+        .innerJoin(users, eq(users.id, inviteCodes.usedBy))
+        .where(and(eq(inviteCodes.createdBy, ownerId), isNotNull(inviteCodes.usedBy)))
+        .orderBy(users.username);
+    return rows;
+}
+
+/** Vrai si `ownerId` a invité `targetId` (donc autorisé à consulter son compte). */
+export async function canActAs(ownerId: number, targetId: number): Promise<boolean> {
+    if (ownerId === targetId) return true;
+    const rows = await db
+        .select({ id: inviteCodes.id })
+        .from(inviteCodes)
+        .where(and(eq(inviteCodes.createdBy, ownerId), eq(inviteCodes.usedBy, targetId)))
+        .limit(1);
+    return rows.length > 0;
 }
 
 /** Vrai si le code existe et n'a pas encore été utilisé. */

@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
-import { requireUserId, changePassword } from "@/lib/auth";
+import { requireUserId, changePassword, getSession, setActingUser } from "@/lib/auth";
 import { setStartDate, getNutritionGoals, updateSettings } from "@/lib/data/settings";
-import { createInviteCode } from "@/lib/data/invite-codes";
+import { createInviteCode, canActAs } from "@/lib/data/invite-codes";
+import { getUserById } from "@/lib/data/users";
 import { getFoodPortions, getLoggedEntries, setFoodPortion } from "@/lib/data/nutrition";
 import {
     getCustomFoods,
@@ -232,6 +234,38 @@ export async function generateInviteCodeAction() {
     const code = await createInviteCode(userId);
     revalidatePath("/parametres");
     return code;
+}
+
+// ─── Consultation d'un compte invité (« voir comme ») ───
+
+/** Bascule vers le compte d'un invité (autorisé si le propriétaire l'a invité). */
+export async function switchToUserAction(targetUserId: number) {
+    const session = await getSession();
+    if (!session) throw new Error("Non authentifié.");
+    const target = z.number().int().positive().parse(targetUserId);
+    const owner = { userId: session.ownerUserId, username: session.ownerUsername };
+
+    if (target !== owner.userId) {
+        const allowed = await canActAs(owner.userId, target);
+        if (!allowed) throw new Error("Accès refusé.");
+        const user = await getUserById(target);
+        if (!user) throw new Error("Compte introuvable.");
+        await setActingUser(owner, { userId: user.id, username: user.username });
+    } else {
+        await setActingUser(owner, owner);
+    }
+    revalidatePath("/", "layout");
+    redirect("/");
+}
+
+/** Revient au compte propriétaire. */
+export async function switchBackAction() {
+    const session = await getSession();
+    if (!session) throw new Error("Non authentifié.");
+    const owner = { userId: session.ownerUserId, username: session.ownerUsername };
+    await setActingUser(owner, owner);
+    revalidatePath("/", "layout");
+    redirect("/");
 }
 
 const newFoodSchema = z.object({

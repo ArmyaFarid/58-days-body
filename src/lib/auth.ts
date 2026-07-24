@@ -44,6 +44,18 @@ export interface SessionUser {
     username: string;
 }
 
+/** Session résolue : utilisateur « actif » + propriétaire réel (pour le mode consultation). */
+export interface ActiveSession {
+    /** Utilisateur dont on voit/modifie les données (peut être un invité consulté). */
+    userId: number;
+    username: string;
+    /** Propriétaire réel du compte connecté (celui qui a généré l'invitation). */
+    ownerUserId: number;
+    ownerUsername: string;
+    /** Vrai si le propriétaire consulte le compte d'un autre. */
+    isImpersonating: boolean;
+}
+
 /**
  * Authentifie un utilisateur. Si le compte n'existe pas encore mais que les
  * identifiants correspondent à l'environnement, on le crée (migration douce).
@@ -111,8 +123,13 @@ export async function changePassword(
     return {};
 }
 
-export async function createSession(user: SessionUser): Promise<void> {
-    const token = await new SignJWT({ sub: user.username, uid: user.userId })
+async function writeSessionToken(
+    uid: number,
+    sub: string,
+    ouid: number,
+    osub: string,
+): Promise<void> {
+    const token = await new SignJWT({ sub, uid, osub, ouid })
         .setProtectedHeader({ alg: "HS256" })
         .setIssuedAt()
         .setExpirationTime("30d")
@@ -128,19 +145,44 @@ export async function createSession(user: SessionUser): Promise<void> {
     });
 }
 
+export async function createSession(user: SessionUser): Promise<void> {
+    // À la connexion, propriétaire = utilisateur actif.
+    await writeSessionToken(user.userId, user.username, user.userId, user.username);
+}
+
+/**
+ * Bascule l'utilisateur actif tout en conservant le propriétaire réel (`owner`).
+ * L'autorisation est vérifiée par l'appelant (Server Action).
+ */
+export async function setActingUser(
+    owner: SessionUser,
+    acting: SessionUser,
+): Promise<void> {
+    await writeSessionToken(acting.userId, acting.username, owner.userId, owner.username);
+}
+
 export async function destroySession(): Promise<void> {
     const store = await cookies();
     store.delete(COOKIE_NAME);
 }
 
-export async function getSession(): Promise<SessionUser | null> {
+export async function getSession(): Promise<ActiveSession | null> {
     const store = await cookies();
     const token = store.get(COOKIE_NAME)?.value;
     if (!token) return null;
     try {
         const { payload } = await jwtVerify(token, secret());
         if (typeof payload.uid !== "number") return null;
-        return { userId: payload.uid, username: String(payload.sub) };
+        const ownerUserId = typeof payload.ouid === "number" ? payload.ouid : payload.uid;
+        const ownerUsername =
+            typeof payload.osub === "string" ? payload.osub : String(payload.sub);
+        return {
+            userId: payload.uid,
+            username: String(payload.sub),
+            ownerUserId,
+            ownerUsername,
+            isImpersonating: ownerUserId !== payload.uid,
+        };
     } catch {
         return null;
     }

@@ -6,9 +6,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2, KeyRound, TriangleAlert, Palette, Target, Ticket, Copy } from "lucide-react";
+import { Loader2, KeyRound, TriangleAlert, Palette, Target, Ticket, Copy, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppearanceSettings } from "@/components/appearance-settings";
+import { AccountSwitcher } from "@/components/account-switcher";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +46,14 @@ interface PhaseGoals {
     fatGoal: number | null;
 }
 
+interface AccountsInfo {
+    users: { id: number; username: string }[];
+    currentUserId: number;
+    ownerUserId: number;
+    ownerUsername: string;
+    isImpersonating: boolean;
+}
+
 interface SettingsViewProps {
     features: { trackFat: boolean; targetWeight: boolean; multiPhase: boolean };
     settings: {
@@ -53,9 +62,10 @@ interface SettingsViewProps {
         phase2: PhaseGoals;
     };
     inviteCodes: { code: string; used: boolean }[];
+    accounts?: AccountsInfo;
 }
 
-export function SettingsView({ features, settings, inviteCodes }: SettingsViewProps) {
+export function SettingsView({ features, settings, inviteCodes, accounts }: SettingsViewProps) {
     const router = useRouter();
     const {
         register,
@@ -95,6 +105,9 @@ export function SettingsView({ features, settings, inviteCodes }: SettingsViewPr
     // Codes d'invitation.
     const [codes, setCodes] = useState(inviteCodes);
     const [generating, startGenerate] = useTransition();
+
+    // En mode consultation d'un autre compte, on masque les actions sensibles.
+    const impersonating = accounts?.isImpersonating ?? false;
 
     function onSaveGoals() {
         const p1p = parseInt(p1Protein, 10);
@@ -177,6 +190,26 @@ export function SettingsView({ features, settings, inviteCodes }: SettingsViewPr
         <div className="flex flex-col gap-4 p-4">
             <h1 className="pt-2 text-2xl font-bold tracking-tight">Paramètres</h1>
 
+            {accounts && (accounts.users.length > 0 || accounts.isImpersonating) ? (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <Users className="size-4" />
+                            Comptes
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <AccountSwitcher
+                            users={accounts.users}
+                            currentUserId={accounts.currentUserId}
+                            ownerUserId={accounts.ownerUserId}
+                            ownerUsername={accounts.ownerUsername}
+                            isImpersonating={accounts.isImpersonating}
+                        />
+                    </CardContent>
+                </Card>
+            ) : null}
+
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
@@ -247,6 +280,8 @@ export function SettingsView({ features, settings, inviteCodes }: SettingsViewPr
                 </CardContent>
             </Card>
 
+            {!impersonating ? (
+            <>
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
@@ -406,6 +441,8 @@ export function SettingsView({ features, settings, inviteCodes }: SettingsViewPr
                     </Dialog>
                 </CardContent>
             </Card>
+            </>
+            ) : null}
         </div>
     );
 }
