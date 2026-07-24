@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireUserId, changePassword, getSession, setActingUser } from "@/lib/auth";
 import { setStartDate, getNutritionGoals, updateSettings } from "@/lib/data/settings";
@@ -255,7 +254,6 @@ export async function switchToUserAction(targetUserId: number) {
         await setActingUser(owner, owner);
     }
     revalidatePath("/", "layout");
-    redirect("/");
 }
 
 /** Revient au compte propriétaire. */
@@ -265,7 +263,6 @@ export async function switchBackAction() {
     const owner = { userId: session.ownerUserId, username: session.ownerUsername };
     await setActingUser(owner, owner);
     revalidatePath("/", "layout");
-    redirect("/");
 }
 
 const newFoodSchema = z.object({

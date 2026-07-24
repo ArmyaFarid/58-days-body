@@ -33,6 +33,8 @@ export function AccountSwitcher({
         startTransition(async () => {
             try {
                 await switchToUserAction(id);
+                // Rechargement complet : garantit l'usage du nouveau cookie de session.
+                window.location.assign("/");
             } catch {
                 toast.error("Bascule impossible.");
             }
@@ -43,6 +45,7 @@ export function AccountSwitcher({
         startTransition(async () => {
             try {
                 await switchBackAction();
+                window.location.assign("/");
             } catch {
                 toast.error("Retour impossible.");
             }

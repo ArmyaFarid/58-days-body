@@ -12,6 +12,7 @@ export function ImpersonationBanner({ username }: { username: string }) {
         startTransition(async () => {
             try {
                 await switchBackAction();
+                window.location.assign("/");
             } catch {
                 toast.error("Retour impossible.");
             }
