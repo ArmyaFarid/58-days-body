@@ -4,12 +4,14 @@ import { SESSIONS } from "./sessions";
 import { LEXICON } from "./lexicon";
 import { DEFAULT_PROTEIN_GOAL, DEFAULT_CALORIE_GOAL } from "@/lib/nutrition";
 import { MASSE_FEMME } from "./masse-femme";
+import { LEGACY_EXERCISES } from "./revisions";
 
 export * from "./types";
 export { SESSIONS } from "./sessions";
 export { LEXICON, youtubeSearchUrl } from "./lexicon";
 export { MASSE_FEMME } from "./masse-femme";
 export { EXERCISE_VARIANTS, variantsFor } from "./variants";
+export { sessionForDate } from "./revisions";
 
 export const PROGRAM_LENGTH = 58;
 
@@ -259,15 +261,6 @@ export const PROGRAM_OPTIONS: { id: ProgramId; label: string }[] = [
     { id: "masse-femme", label: MASSE_FEMME.label },
 ];
 
-/**
- * Exercices retirés d'une séance mais dont les setLogs restent en base : on
- * garde leur libellé pour que l'historique reste lisible.
- */
-const LEGACY_EXERCISE_NAMES: Record<string, string> = {
-    // Retiré du circuit du samedi (remplacé par `pump-tirage-assis`).
-    "pump-rowing": "Rowing inversé sous la table",
-};
-
 // Table nom d'exercice (tous programmes) pour l'historique de perfs.
 const EXERCISE_NAME_MAP: Map<string, string> = (() => {
     const map = new Map<string, string>();
@@ -281,8 +274,8 @@ const EXERCISE_NAME_MAP: Map<string, string> = (() => {
             }
         }
     }
-    for (const [key, name] of Object.entries(LEGACY_EXERCISE_NAMES)) {
-        if (!map.has(key)) map.set(key, name);
+    for (const ex of LEGACY_EXERCISES) {
+        if (!map.has(ex.key)) map.set(ex.key, ex.name);
     }
     return map;
 })();

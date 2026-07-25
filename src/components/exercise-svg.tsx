@@ -28,6 +28,19 @@ const quad = (extra: Seg[]): Pose => ({
     segments: [[44, 64, 74, 64], [38, 62, 44, 64], [46, 64, 46, 96], [72, 64, 72, 96], ...extra],
 });
 
+// Tirage assis à la bande : même mouvement dans Tirage A et dans le circuit du samedi.
+const seatedBandRow: Drawing = {
+    equip: { dashed: true, segments: [[96, 72, 96, 84]] },
+    a: {
+        head: [36, 44, 6],
+        segments: [[38, 50, 38, 78], [38, 78, 96, 82], [42, 54, 92, 76]],
+    },
+    b: {
+        head: [36, 44, 6],
+        segments: [[38, 50, 38, 78], [38, 78, 96, 82], [42, 54, 64, 66], [64, 66, 44, 74]],
+    },
+};
+
 const DRAWINGS: Record<string, Drawing> = {
     "elevations-laterales": {
         a: stand([[58, 39, 55, 62], [58, 39, 61, 62]]),
@@ -236,17 +249,8 @@ const DRAWINGS: Record<string, Drawing> = {
             ],
         },
     },
-    "tirage-bande-assis": {
-        equip: { dashed: true, segments: [[96, 72, 96, 84]] },
-        a: {
-            head: [36, 44, 6],
-            segments: [[38, 50, 38, 78], [38, 78, 96, 82], [42, 54, 92, 76]],
-        },
-        b: {
-            head: [36, 44, 6],
-            segments: [[38, 50, 38, 78], [38, 78, 96, 82], [42, 54, 64, 66], [64, 66, 44, 74]],
-        },
-    },
+    "tirage-bande-assis": seatedBandRow,
+    "tirage-assis-bande": seatedBandRow,
     "pull-over-bande": {
         equip: { dashed: true, segments: [[30, 12, 42, 16]] },
         a: stand([[58, 38, 42, 16], [58, 40, 44, 18]]),

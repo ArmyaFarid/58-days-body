@@ -20,6 +20,7 @@ import {
     getBandMode,
     youtubeSearchUrl,
     variantsFor,
+    sessionForDate,
 } from "@/lib/program";
 
 function resolveDate(raw: string | undefined, today: string): string {
@@ -40,7 +41,9 @@ export default async function SeancePage({
     const dayNumber = getDayNumber(startDate, fromISO(selectedDate));
     const phase = program.getPhase(dayNumber);
     const dayType = program.dayTypeForWeekday(fromISO(selectedDate).getDay());
-    const session = program.sessions[dayType];
+    const base = program.sessions[dayType];
+    // Une séance passée s'affiche telle qu'elle était ce jour-là.
+    const session = base ? sessionForDate(base, selectedDate) : base;
     const training = program.isTrainingDay(dayType, phase?.key ?? null);
 
     if (!training || !session || session.dayType === "repos") {

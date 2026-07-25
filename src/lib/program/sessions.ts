@@ -365,7 +365,7 @@ export const SESSIONS: Record<string, Session> = {
                 name: "Tirage assis à la bande",
                 sets: "3 tours",
                 reps: "max −2",
-                lexiconKey: "tirage-bande-assis",
+                lexiconKey: "tirage-assis-bande",
             },
             {
                 key: "pump-crunch",
