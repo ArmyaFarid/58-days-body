@@ -49,6 +49,8 @@ export interface Session {
 export interface LexiconEntry {
     name: string;
     text: string;
+    /** Recherche YouTube à utiliser à la place du nom (mot-clé plus courant). */
+    youtubeQuery?: string;
 }
 
 // ─── Abstraction multi-programmes ───

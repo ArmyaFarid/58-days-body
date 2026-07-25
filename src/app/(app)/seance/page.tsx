@@ -99,7 +99,7 @@ export default async function SeancePage({
                 lexiconKey: ex.lexiconKey,
                 lexiconName: lexicon?.name ?? ex.name,
                 lexiconText: lexicon?.text ?? "",
-                youtubeUrl: youtubeSearchUrl(lexicon?.name ?? ex.name),
+                youtubeUrl: youtubeSearchUrl(lexicon?.youtubeQuery ?? lexicon?.name ?? ex.name),
                 setCount: parseSetCount(ex.sets),
                 logged: loggedMap,
                 last: lastMap,

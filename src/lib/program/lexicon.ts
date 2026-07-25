@@ -66,7 +66,8 @@ export const LEXICON: Record<string, LexiconEntry> = {
     },
     "tirage-bande-assis": {
         name: "Tirage à la bande assis",
-        text: "Assis au sol jambes tendues, bande passée autour de tes pieds, une extrémité dans chaque main. Tire les mains vers ton ventre en tirant les coudes vers l'arrière et en serrant les omoplates, reviens lentement.",
+        text: "Assieds-toi au sol, jambes tendues devant toi. Passe la bande autour de la plante de tes deux pieds et attrape une extrémité dans chaque main. Buste droit, tire les mains vers ton ventre en amenant les coudes vers l'arrière et en serrant les omoplates. Reviens lentement, bras presque tendus (garde un peu de tension). Où le sentir : le milieu du dos, entre les omoplates. Si tu sens surtout les bras, ralentis et concentre-toi sur les coudes qui reculent. Erreurs à éviter : te pencher en arrière avec l'élan du buste · arrondir le dos · relâcher toute la tension en fin de retour. Régler la difficulté : jambes plus tendues ou bande raccourcie = plus dur.",
+        youtubeQuery: "tirage assis élastique seated band row",
     },
     "face-pull": {
         name: "Face pull à la bande",

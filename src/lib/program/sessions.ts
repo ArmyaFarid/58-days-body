@@ -361,11 +361,11 @@ export const SESSIONS: Record<string, Session> = {
                 lexiconKey: "elevations-laterales",
             },
             {
-                key: "pump-rowing",
-                name: "Rowing inversé sous la table",
+                key: "pump-tirage-assis",
+                name: "Tirage assis à la bande",
                 sets: "3 tours",
                 reps: "max −2",
-                lexiconKey: "rowing-inverse",
+                lexiconKey: "tirage-bande-assis",
             },
             {
                 key: "pump-crunch",
