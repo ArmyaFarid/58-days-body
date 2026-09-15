@@ -35,7 +35,7 @@ export async function getLoggedEntries(userId: number, date: string): Promise<Lo
             })
             .from(foodLogs)
             .where(and(eq(foodLogs.userId, userId), eq(foodLogs.date, date))),
-        getCustomFoods(userId),
+        getCustomFoods(),
     ]);
     return rows.map((r) => resolveEntry(r, custom));
 }
@@ -119,7 +119,7 @@ export async function getNutritionHistory(
             .from(foodLogs)
             .where(eq(foodLogs.userId, userId))
             .orderBy(desc(foodLogs.date)),
-        getCustomFoods(userId),
+        getCustomFoods(),
     ]);
 
     const byDate = new Map<string, LoggedEntry[]>();

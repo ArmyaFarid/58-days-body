@@ -153,7 +153,7 @@ export function MealPresetDialog({
             />
             <DialogContent className="max-h-[85vh] max-w-sm overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>{editingId ? "Modifier le repas" : "Mes repas"}</DialogTitle>
+                    <DialogTitle>{editingId ? "Modifier le repas" : "Repas partagés"}</DialogTitle>
                 </DialogHeader>
 
                 <div className="flex flex-col gap-4">

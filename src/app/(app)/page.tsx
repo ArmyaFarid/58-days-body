@@ -54,8 +54,8 @@ export default async function DashboardPage() {
             getLoggedEntries(userId, today),
             getFrequentFoodKeys(userId),
             getNutritionHistory(userId),
-            getCustomFoods(userId),
-            getCustomPresets(userId),
+            getCustomFoods(),
+            getCustomPresets(),
             getSettingsView(userId),
             program.features.measurementsPrimary ? getMeasurements(userId) : Promise.resolve([]),
         ]);

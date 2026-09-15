@@ -176,7 +176,7 @@ const foodPortionSchema = z.object({
 export async function setFoodPortionAction(input: z.infer<typeof foodPortionSchema>) {
     const userId = await requireUserId();
     const { date, foodKey, portions } = foodPortionSchema.parse(input);
-    const custom = await getCustomFoods(userId);
+    const custom = await getCustomFoods();
     const { protein, calories, fat } = macroOf(foodKey, custom);
     await setFoodPortion(userId, date, foodKey, portions, protein, calories, fat);
     await syncNutritionHabits(userId, date);
@@ -197,7 +197,7 @@ export async function applyPresetAction(date: string, presetKey: string) {
     const key = z.string().min(1).max(32).parse(presetKey);
     const preset = PRESETS.find((p) => p.key === key);
     if (!preset) throw new Error("Preset inconnu.");
-    const [current, custom] = await Promise.all([getFoodPortions(userId, d), getCustomFoods(userId)]);
+    const [current, custom] = await Promise.all([getFoodPortions(userId, d), getCustomFoods()]);
     for (const item of preset.items) {
         const next = (current[item.foodKey] ?? 0) + item.portions;
         const { protein, calories, fat } = macroOf(item.foodKey, custom);
@@ -322,9 +322,9 @@ export async function addCustomFoodAction(input: z.infer<typeof newFoodSchema>) 
 const editFoodSchema = newFoodSchema.extend({ key: z.string().min(1).max(64) });
 
 export async function updateCustomFoodAction(input: z.infer<typeof editFoodSchema>) {
-    const userId = await requireUserId();
+    await requireUserId();
     const parsed = editFoodSchema.parse(input);
-    const food = await updateCustomFood(userId, parsed.key, {
+    const food = await updateCustomFood(parsed.key, {
         name: parsed.name,
         portionLabel: parsed.portionLabel,
         metric: parsed.metric,
@@ -338,9 +338,9 @@ export async function updateCustomFoodAction(input: z.infer<typeof editFoodSchem
 }
 
 export async function deleteCustomFoodAction(key: string) {
-    const userId = await requireUserId();
+    await requireUserId();
     const k = z.string().min(1).max(64).parse(key);
-    await deleteCustomFood(userId, k);
+    await deleteCustomFood(k);
     revalidatePath("/");
 }
 
@@ -365,9 +365,9 @@ export async function addCustomPresetAction(input: z.infer<typeof newPresetSchem
 const editPresetSchema = newPresetSchema.extend({ id: z.number().int().positive() });
 
 export async function updateCustomPresetAction(input: z.infer<typeof editPresetSchema>) {
-    const userId = await requireUserId();
+    await requireUserId();
     const { id, name, items } = editPresetSchema.parse(input);
-    const preset = await updateCustomPreset(userId, id, name, items);
+    const preset = await updateCustomPreset(id, name, items);
     revalidatePath("/");
     return preset;
 }
@@ -376,9 +376,9 @@ export async function applyCustomPresetAction(date: string, presetId: number) {
     const userId = await requireUserId();
     const d = isoDate.parse(date);
     const id = z.number().int().positive().parse(presetId);
-    const items = await getCustomPresetItems(userId, id);
+    const items = await getCustomPresetItems(id);
     if (!items) throw new Error("Repas introuvable.");
-    const [current, custom] = await Promise.all([getFoodPortions(userId, d), getCustomFoods(userId)]);
+    const [current, custom] = await Promise.all([getFoodPortions(userId, d), getCustomFoods()]);
     for (const item of items) {
         const next = (current[item.foodKey] ?? 0) + item.portions;
         const { protein, calories, fat } = macroOf(item.foodKey, custom);
@@ -391,8 +391,8 @@ export async function applyCustomPresetAction(date: string, presetId: number) {
 }
 
 export async function deleteCustomPresetAction(presetId: number) {
-    const userId = await requireUserId();
+    await requireUserId();
     const id = z.number().int().positive().parse(presetId);
-    await deleteCustomPreset(userId, id);
+    await deleteCustomPreset(id);
     revalidatePath("/");
 }

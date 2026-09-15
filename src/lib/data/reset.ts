@@ -10,13 +10,13 @@ import {
     photos,
     measurements,
     foodLogs,
-    customFoods,
-    customPresets,
 } from "@/lib/db/schema";
 import { getBlobToken } from "@/lib/blob-token";
 
 // Remet à zéro les données d'UN utilisateur (et ses blobs photos). Le compte
-// et le mot de passe sont conservés ; il repasse par l'onboarding.
+// et le mot de passe sont conservés ; il repasse par l'onboarding. La
+// bibliothèque nutrition (aliments et repas) est partagée : elle n'est pas
+// touchée.
 export async function resetAllData(userId: number): Promise<void> {
     const token = getBlobToken();
     const photoRows = await db.select().from(photos).where(eq(photos.userId, userId));
@@ -32,8 +32,6 @@ export async function resetAllData(userId: number): Promise<void> {
     await db.delete(weightLogs).where(eq(weightLogs.userId, userId));
     await db.delete(habitLogs).where(eq(habitLogs.userId, userId));
     await db.delete(foodLogs).where(eq(foodLogs.userId, userId));
-    await db.delete(customFoods).where(eq(customFoods.userId, userId));
-    await db.delete(customPresets).where(eq(customPresets.userId, userId));
     await db.delete(measurements).where(eq(measurements.userId, userId));
     await db.delete(workoutSessions).where(eq(workoutSessions.userId, userId)); // set_logs en cascade
     await db.delete(settings).where(eq(settings.userId, userId));

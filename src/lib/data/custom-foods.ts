@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { customFoods } from "@/lib/db/schema";
 import { CATEGORIES, type Food, type FoodCategory } from "@/lib/nutrition";
@@ -10,13 +10,13 @@ function asCategory(value: string): FoodCategory {
         : "Lipides et extras";
 }
 
-/** Aliments personnalisés de l'utilisateur, au format Food (comme le catalogue). */
-export async function getCustomFoods(userId: number): Promise<Food[]> {
-    const rows = await db
-        .select()
-        .from(customFoods)
-        .where(eq(customFoods.userId, userId))
-        .orderBy(customFoods.name);
+// Bibliothèque commune : les aliments perso sont partagés par tous les comptes.
+// `user_id` ne sert qu'à tracer l'auteur ; aucune lecture ni écriture ne filtre
+// dessus. Les repas partagés peuvent ainsi référencer n'importe quel aliment.
+
+/** Aliments personnalisés (tous comptes), au format Food (comme le catalogue). */
+export async function getCustomFoods(): Promise<Food[]> {
+    const rows = await db.select().from(customFoods).orderBy(customFoods.name);
     return rows.map((r) => ({
         key: r.key,
         name: r.name,
@@ -55,11 +55,7 @@ export async function addCustomFood(userId: number, input: NewCustomFood): Promi
     return { key, ...input };
 }
 
-export async function updateCustomFood(
-    userId: number,
-    key: string,
-    input: NewCustomFood,
-): Promise<Food> {
+export async function updateCustomFood(key: string, input: NewCustomFood): Promise<Food> {
     await db
         .update(customFoods)
         .set({
@@ -71,12 +67,10 @@ export async function updateCustomFood(
             fat: input.fat,
             category: input.category,
         })
-        .where(and(eq(customFoods.userId, userId), eq(customFoods.key, key)));
+        .where(eq(customFoods.key, key));
     return { key, ...input };
 }
 
-export async function deleteCustomFood(userId: number, key: string): Promise<void> {
-    await db
-        .delete(customFoods)
-        .where(and(eq(customFoods.userId, userId), eq(customFoods.key, key)));
+export async function deleteCustomFood(key: string): Promise<void> {
+    await db.delete(customFoods).where(eq(customFoods.key, key));
 }

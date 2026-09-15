@@ -1,7 +1,7 @@
 import "server-only";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { users, customFoods, customPresets } from "@/lib/db/schema";
 
 export interface UserRow {
     id: number;
@@ -51,8 +51,14 @@ export async function setUserProgram(id: number, programId: string): Promise<voi
     await db.update(users).set({ programId }).where(eq(users.id, id));
 }
 
-/** Supprime un compte. Les données liées partent en cascade (voir schéma). */
+/**
+ * Supprime un compte. Les données liées partent en cascade (voir schéma), sauf
+ * la bibliothèque nutrition (aliments et repas) qui est partagée : on détache
+ * seulement son auteur pour qu'elle survive à la suppression du compte.
+ */
 export async function deleteUser(id: number): Promise<void> {
+    await db.update(customFoods).set({ userId: null }).where(eq(customFoods.userId, id));
+    await db.update(customPresets).set({ userId: null }).where(eq(customPresets.userId, id));
     await db.delete(users).where(eq(users.id, id));
 }
 

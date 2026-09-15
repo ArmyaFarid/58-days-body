@@ -111,9 +111,10 @@ export const habitLogs = pgTable(
     (t) => [unique("habit_logs_user_date").on(t.userId, t.date)],
 );
 
-// Aliments personnalisés ajoutés par l'utilisateur (le catalogue de base vit en
+// Aliments personnalisés ajoutés depuis l'app (le catalogue de base vit en
 // config TS ; ceux-ci s'y ajoutent au runtime). `key` = slug stable référencé
-// par food_logs (ex. « custom-<uuid> »).
+// par food_logs (ex. « custom-<uuid> »). Bibliothèque COMMUNE : visible et
+// modifiable par tous les comptes ; `user_id` ne trace que l'auteur.
 export const customFoods = pgTable(
     "custom_foods",
     {
@@ -134,8 +135,9 @@ export const customFoods = pgTable(
 );
 
 // Repas (presets) personnalisés : une liste d'ingrédients (aliment + portions)
-// que l'utilisateur applique en un clic. `items` référence des clés d'aliments
-// (catalogue de base ou custom_foods).
+// appliquée en un clic. `items` référence des clés d'aliments (catalogue de base
+// ou custom_foods). Bibliothèque COMMUNE : visible et modifiable par tous les
+// comptes ; `user_id` ne trace que l'auteur.
 export const customPresets = pgTable("custom_presets", {
     id: serial("id").primaryKey(),
     userId: userRef(),

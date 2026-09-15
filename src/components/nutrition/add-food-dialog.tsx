@@ -144,7 +144,7 @@ export function AddFoodDialog({
             />
             <DialogContent className="max-h-[85vh] max-w-sm overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>{editingKey ? "Modifier l'aliment" : "Mes aliments"}</DialogTitle>
+                    <DialogTitle>{editingKey ? "Modifier l'aliment" : "Aliments partagés"}</DialogTitle>
                 </DialogHeader>
                 <div className="flex flex-col gap-4">
                     {!editingKey && customFoods.length > 0 ? (
