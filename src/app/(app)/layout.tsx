@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Dumbbell, Settings } from "lucide-react";
 import { getSession } from "@/lib/auth";
-import { getStartDate } from "@/lib/data/settings";
+import { getActiveProgram } from "@/lib/data/user-programs";
 import { AppNav } from "@/components/app-nav";
 import { LogoutButton } from "@/components/logout-button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -13,8 +13,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     const session = await getSession();
     if (!session) redirect("/login");
 
-    const startDate = await getStartDate(session.userId);
-    if (!startDate) redirect("/onboarding");
+    const active = await getActiveProgram(session.userId);
+    if (!active) redirect("/onboarding");
 
     return (
         <div className="mx-auto flex min-h-full w-full max-w-xl flex-col">
@@ -22,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <header className="bg-background/95 sticky top-0 z-30 flex items-center justify-between border-b px-4 py-2 backdrop-blur">
                 <span className="flex items-center gap-2 font-semibold">
                     <Dumbbell className="size-4 text-primary" />
-                    58 jours
+                    {active.program.shortLabel}
                 </span>
                 <div className="flex items-center gap-1">
                     <ThemeToggle />

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { differenceInCalendarDays } from "date-fns";
-import { Dumbbell, ChevronRight, TrendingUp, TrendingDown, Minus, Scale, CheckCircle2, UtensilsCrossed, Ruler } from "lucide-react";
+import { Dumbbell, ChevronRight, TrendingUp, TrendingDown, Minus, Scale, CheckCircle2, UtensilsCrossed, Ruler, Flame } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -8,12 +8,13 @@ import { Button } from "@/components/ui/button";
 import { QuickWeight } from "@/components/quick-weight";
 import { HabitChecklist } from "@/components/habit-checklist";
 import { NutritionTracker } from "@/components/nutrition/nutrition-tracker";
+import { ProgramSwitcher } from "@/components/program-switcher";
 import { getSession as getAuthSession } from "@/lib/auth";
-import { getStartDate, getNutritionGoals, getSettingsView } from "@/lib/data/settings";
-import { getUserProgramId } from "@/lib/data/users";
+import { getNutritionGoals } from "@/lib/data/settings";
+import { getActiveProgram, scheduleContext } from "@/lib/data/user-programs";
 import { getWeights, getWeightForDate, computeTrend } from "@/lib/data/weight";
 import { getHabit } from "@/lib/data/habits";
-import { getSessionForDate } from "@/lib/data/workout";
+import { getSessionForDate, getCompletedSessionDates } from "@/lib/data/workout";
 import { getMeasurements } from "@/lib/data/measurements";
 import {
     getLoggedEntries,
@@ -24,7 +25,8 @@ import { getCustomFoods } from "@/lib/data/custom-foods";
 import { getCustomPresets } from "@/lib/data/custom-presets";
 import { habitMetaFor } from "@/lib/habits-meta";
 import { todayISO, fromISO, formatShort } from "@/lib/date";
-import { getProgram, getDayNumber } from "@/lib/program";
+import { getProgram } from "@/lib/program";
+import { computeWeeklyStreak } from "@/lib/program/streak";
 
 function measurementIsDue(dates: string[], today: string): boolean {
     if (dates.length === 0) return true;
@@ -34,41 +36,50 @@ function measurementIsDue(dates: string[], today: string): boolean {
 
 export default async function DashboardPage() {
     const { userId } = (await getAuthSession())!;
-    const startDate = (await getStartDate(userId))!;
-    const programId = await getUserProgramId(userId);
-    const program = getProgram(programId);
+    const { program, row, all } = (await getActiveProgram(userId))!;
+    const startDate = row.startDate;
     const today = todayISO();
-    const dayNumber = getDayNumber(startDate, fromISO(today));
+    const ctx = scheduleContext(row, today);
+    const dayNumber = ctx.dayNumber;
     const phase = program.getPhase(dayNumber);
-    const dayType = program.dayTypeForWeekday(fromISO(today).getDay());
+    const trainingPhase = program.trainingPhase?.(ctx) ?? null;
+    const dayType = program.dayTypeForWeekday(fromISO(today).getDay(), ctx);
     const session = program.sessions[dayType];
     const training = program.isTrainingDay(dayType, phase?.key ?? null);
 
-    const [weights, todayWeight, habit, workoutSession, nutritionGoals, foodEntries, frequentKeys, nutritionHistory, customFoods, customPresets, settingsView, measurements] =
+    const [weights, todayWeight, habit, workoutSession, nutritionGoals, foodEntries, frequentKeys, nutritionHistory, customFoods, customPresets, measurements, completedDates] =
         await Promise.all([
             getWeights(userId),
             getWeightForDate(userId, today),
             getHabit(userId, today),
-            getSessionForDate(userId, today),
+            getSessionForDate(userId, program, today),
             getNutritionGoals(userId),
             getLoggedEntries(userId, today),
             getFrequentFoodKeys(userId),
             getNutritionHistory(userId),
             getCustomFoods(),
             getCustomPresets(),
-            getSettingsView(userId),
             program.features.measurementsPrimary ? getMeasurements(userId) : Promise.resolve([]),
+            program.features.weeklyStreak
+                ? getCompletedSessionDates(userId, program, startDate)
+                : Promise.resolve([]),
         ]);
     const trend = computeTrend(weights, program.trend);
     const sessionDone = workoutSession?.completed === true;
-    const meta = habitMetaFor(program);
+    const meta = habitMetaFor(program, { creatine: row.creatine });
+    const streak = program.features.weeklyStreak
+        ? computeWeeklyStreak(program, startDate, row.holdPhase1, completedDates, today)
+        : null;
+    const switcherPrograms = all
+        .filter((r) => r.status === "active")
+        .map((r) => ({ id: r.programId, label: getProgram(r.programId).shortLabel }));
 
     const length = program.length;
     const beforeStart = dayNumber < 1;
     const finished = length != null && dayNumber > length;
 
     // Progression : durée fixe (58 jours) ou vers le poids cible (programme ouvert).
-    const targetWeight = program.features.targetWeight ? settingsView.targetWeightKg : null;
+    const targetWeight = program.features.targetWeight ? row.targetWeightKg : null;
     const firstWeight = weights[0]?.weightKg ?? null;
     const latestWeight = trend.latest?.weightKg ?? null;
     const fixedProgress = length ? Math.min(100, Math.max(0, (dayNumber / length) * 100)) : 0;
@@ -104,9 +115,32 @@ export default async function DashboardPage() {
                     frequentKeys={frequentKeys}
                     history={nutritionHistory}
                 />
+                {program.nutritionNote ? (
+                    <p className="text-muted-foreground mt-3 border-t pt-3 text-xs leading-relaxed">
+                        {program.nutritionNote}
+                    </p>
+                ) : null}
             </CardContent>
         </Card>
     );
+
+    const streakCard = streak ? (
+        <Card className="border-orange-500/30 bg-orange-500/5">
+            <CardContent className="flex items-center gap-3 py-3">
+                <Flame
+                    className={streak.weeks > 0 ? "size-7 shrink-0 text-orange-500" : "text-muted-foreground size-7 shrink-0"}
+                />
+                <div className="flex-1">
+                    <p className="text-lg font-semibold leading-tight">
+                        {streak.weeks} {streak.weeks > 1 ? "semaines" : "semaine"} de suite
+                    </p>
+                    <p className="text-muted-foreground text-sm">
+                        Cette semaine : {streak.doneThisWeek} / {streak.plannedThisWeek} séances
+                    </p>
+                </div>
+            </CardContent>
+        </Card>
+    ) : null;
 
     const seanceCard = (
         <Card>
@@ -157,9 +191,11 @@ export default async function DashboardPage() {
 
     return (
         <div className="flex flex-col gap-4 p-4">
+            <ProgramSwitcher programs={switcherPrograms} current={program.id} />
+
             {/* En-tête jour / phase */}
-            <section className="pt-2">
-                <div className="flex items-end justify-between">
+            <section>
+                <div className="flex items-end justify-between gap-2">
                     <div>
                         <p className="text-muted-foreground text-sm">{formatShort(today)}</p>
                         <h1 className="text-3xl font-bold tracking-tight">
@@ -167,13 +203,24 @@ export default async function DashboardPage() {
                                 ? "Bientôt"
                                 : finished
                                   ? "Terminé 🎉"
-                                  : length != null
-                                    ? `Jour ${dayNumber} / ${length}`
-                                    : `Jour ${dayNumber}`}
+                                  : trainingPhase
+                                    ? `Semaine ${Math.floor((dayNumber - 1) / 7) + 1}`
+                                    : length != null
+                                      ? `Jour ${dayNumber} / ${length}`
+                                      : `Jour ${dayNumber}`}
+                            {trainingPhase && !beforeStart ? (
+                                <span className="text-muted-foreground text-base font-medium">
+                                    {" "}
+                                    — {trainingPhase.label}
+                                </span>
+                            ) : null}
                         </h1>
                     </div>
-                    {phase ? <Badge variant="secondary">{phase.shortLabel}</Badge> : null}
+                    {phase && !trainingPhase ? <Badge variant="secondary">{phase.shortLabel}</Badge> : null}
                 </div>
+                {program.objective ? (
+                    <p className="text-muted-foreground mt-1 text-sm">{program.objective}</p>
+                ) : null}
 
                 {beforeStart ? (
                     <p className="text-muted-foreground mt-2 text-sm">
@@ -232,6 +279,7 @@ export default async function DashboardPage() {
             {program.features.nutritionFirst ? (
                 <>
                     {nutritionCard}
+                    {streakCard}
                     {seanceCard}
                 </>
             ) : (

@@ -19,9 +19,16 @@ const DEFAULT_LABELS: Record<HabitField, { label: string; short: string }> = {
     sleepBefore23: { label: "Sommeil", short: "Sommeil" },
 };
 
-/** Habitudes (colonnes) à afficher pour un programme, dans l'ordre. */
-export function habitMetaFor(program: Program): HabitMeta[] {
-    return program.habitFields.map((field) => {
+/**
+ * Habitudes (colonnes) à afficher pour un programme, dans l'ordre. Créatine
+ * optionnelle : ajoutée en tête seulement si l'interrupteur des réglages est activé.
+ */
+export function habitMetaFor(program: Program, options: { creatine?: boolean } = {}): HabitMeta[] {
+    const fields: HabitField[] =
+        program.features.creatineOptional && options.creatine
+            ? ["creatine", ...program.habitFields]
+            : program.habitFields;
+    return fields.map((field) => {
         const base = program.habitLabels?.[field] ?? DEFAULT_LABELS[field];
         return { field, label: base.label, short: base.short, auto: AUTO_FIELDS.includes(field) };
     });

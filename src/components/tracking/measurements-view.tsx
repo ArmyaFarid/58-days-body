@@ -20,33 +20,46 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { upsertMeasurementAction } from "@/lib/actions";
 import type { Measurement } from "@/lib/data/measurements";
+import type { MeasurementKey } from "@/lib/program";
 
-const METRICS = [
-    { key: "shoulders", label: "Épaules" },
-    { key: "chest", label: "Poitrine" },
-    { key: "arm", label: "Bras fléchi" },
-    { key: "waist", label: "Taille" },
-    { key: "thigh", label: "Cuisse" },
-] as const;
+const LABELS: Record<MeasurementKey, string> = {
+    hips: "Hanches",
+    shoulders: "Épaules",
+    chest: "Poitrine",
+    arm: "Bras fléchi",
+    waist: "Taille",
+    thigh: "Cuisse",
+};
 
-type MetricKey = (typeof METRICS)[number]["key"];
+const ALL_KEYS: MeasurementKey[] = ["hips", "shoulders", "chest", "arm", "waist", "thigh"];
+
+const DEFAULT_FIELDS: MeasurementKey[] = ["shoulders", "chest", "arm", "waist", "thigh"];
+
+type MetricKey = MeasurementKey;
 
 interface MeasurementsViewProps {
     today: string;
     initial: Measurement | null;
     measurements: Measurement[];
+    /** Mensurations proposées, dans l'ordre (défaut : celles du programme 58). */
+    fields?: MeasurementKey[];
 }
 
-export function MeasurementsView({ today, initial, measurements }: MeasurementsViewProps) {
+export function MeasurementsView({
+    today,
+    initial,
+    measurements,
+    fields = DEFAULT_FIELDS,
+}: MeasurementsViewProps) {
     const router = useRouter();
-    const [values, setValues] = useState<Record<MetricKey, string>>(() => ({
-        shoulders: initial?.shoulders != null ? String(initial.shoulders) : "",
-        chest: initial?.chest != null ? String(initial.chest) : "",
-        arm: initial?.arm != null ? String(initial.arm) : "",
-        waist: initial?.waist != null ? String(initial.waist) : "",
-        thigh: initial?.thigh != null ? String(initial.thigh) : "",
-    }));
-    const [metric, setMetric] = useState<MetricKey>("shoulders");
+    const METRICS = fields.map((key) => ({ key, label: LABELS[key] }));
+    const [values, setValues] = useState<Record<MetricKey, string>>(
+        () =>
+            Object.fromEntries(
+                ALL_KEYS.map((k) => [k, initial?.[k] != null ? String(initial[k]) : ""]),
+            ) as Record<MetricKey, string>,
+    );
+    const [metric, setMetric] = useState<MetricKey>(fields[0]);
     const [day, setDay] = useState(today);
     const [pending, startTransition] = useTransition();
 
@@ -58,13 +71,10 @@ export function MeasurementsView({ today, initial, measurements }: MeasurementsV
     function onSave() {
         startTransition(async () => {
             try {
+                // Seuls les champs affichés sont envoyés : les autres ne sont jamais écrasés.
                 await upsertMeasurementAction({
                     date: day,
-                    shoulders: parse(values.shoulders),
-                    chest: parse(values.chest),
-                    arm: parse(values.arm),
-                    waist: parse(values.waist),
-                    thigh: parse(values.thigh),
+                    ...Object.fromEntries(fields.map((k) => [k, parse(values[k])])),
                 });
                 toast.success("Mensurations enregistrées.");
                 router.refresh();

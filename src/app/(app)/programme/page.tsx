@@ -8,14 +8,13 @@ import {
 } from "@/components/ui/accordion";
 import { Card, CardContent } from "@/components/ui/card";
 import { getSession } from "@/lib/auth";
-import { getUserProgramId } from "@/lib/data/users";
+import { getActiveProgram } from "@/lib/data/user-programs";
 import {
     PHASES,
     PROGRESSION_LEVERS,
     BLOC2_TECHNIQUES,
     EXERCISE_RANKING,
     LEXICON,
-    getProgram,
 } from "@/lib/program";
 import {
     PROFILE,
@@ -29,12 +28,16 @@ import {
     MISTAKES,
 } from "@/lib/program/reference";
 import { FemmeProgrammeSummary } from "./femme-summary";
+import { ProgramSummary } from "./program-summary";
 
 export default async function ProgrammePage() {
     const { userId } = (await getSession())!;
-    const program = getProgram(await getUserProgramId(userId));
+    const { program } = (await getActiveProgram(userId))!;
     if (program.id === "masse-femme") {
         return <FemmeProgrammeSummary program={program} />;
+    }
+    if (program.summary) {
+        return <ProgramSummary program={program} />;
     }
 
     return (

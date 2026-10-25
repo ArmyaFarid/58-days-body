@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { getStartDate } from "@/lib/data/settings";
 import { getUserProgramId } from "@/lib/data/users";
+import { getActiveProgram } from "@/lib/data/user-programs";
 import { getProgram } from "@/lib/program";
 import { todayISO } from "@/lib/date";
 import { OnboardingForm } from "./onboarding-form";
@@ -10,8 +10,7 @@ export default async function OnboardingPage() {
     const session = await getSession();
     if (!session) redirect("/login");
 
-    const startDate = await getStartDate(session.userId);
-    if (startDate) redirect("/");
+    if (await getActiveProgram(session.userId)) redirect("/");
 
     const program = getProgram(await getUserProgramId(session.userId));
 

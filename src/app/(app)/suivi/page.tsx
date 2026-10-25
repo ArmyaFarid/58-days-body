@@ -10,11 +10,10 @@ import { SuiviTabs, type SuiviTab } from "./suivi-tabs";
 import { getSession } from "@/lib/auth";
 import { getWeights, getWeightForDate, computeWeeklyAverages, computeTrend } from "@/lib/data/weight";
 import { getPhotos } from "@/lib/data/photos";
-import { getStartDate } from "@/lib/data/settings";
-import { getUserProgramId } from "@/lib/data/users";
+import { getActiveProgram } from "@/lib/data/user-programs";
 import { getMeasurements, getMeasurementForDate } from "@/lib/data/measurements";
 import { getAllExerciseHistories } from "@/lib/data/workout";
-import { getExerciseName, TRACTION_KEYS, getProgram, type Program } from "@/lib/program";
+import { getExerciseName, TRACTION_KEYS, type Program } from "@/lib/program";
 import { todayISO, fromISO } from "@/lib/date";
 
 async function PoidsSection({ userId, program }: { userId: number; program: Program }) {
@@ -103,12 +102,12 @@ async function PoidsSection({ userId, program }: { userId: number; program: Prog
     );
 }
 
-async function PhotosSection({ userId }: { userId: number }) {
-    const [photos, startDate] = await Promise.all([getPhotos(userId), getStartDate(userId)]);
+async function PhotosSection({ userId, startDate }: { userId: number; startDate: string }) {
+    const photos = await getPhotos(userId);
     return <PhotosView today={todayISO()} startDate={startDate} photos={photos} />;
 }
 
-async function MensurationsSection({ userId, showNote }: { userId: number; showNote: boolean }) {
+async function MensurationsSection({ userId, program }: { userId: number; program: Program }) {
     const today = todayISO();
     const [measurements, initial] = await Promise.all([
         getMeasurements(userId),
@@ -116,21 +115,23 @@ async function MensurationsSection({ userId, showNote }: { userId: number; showN
     ]);
     return (
         <div className="flex flex-col gap-4">
-            {showNote ? (
+            {program.trackingNote ? (
                 <Card className="border-primary/30 bg-primary/5">
-                    <CardContent className="py-3 text-sm">
-                        Le tour de hanches et de cuisse racontent mieux ta progression que la balance.
-                        Un autre bon repère : réessaye un vêtement ajusté toutes les 2 semaines.
-                    </CardContent>
+                    <CardContent className="py-3 text-sm">{program.trackingNote}</CardContent>
                 </Card>
             ) : null}
-            <MeasurementsView today={today} initial={initial} measurements={measurements} />
+            <MeasurementsView
+                today={today}
+                initial={initial}
+                measurements={measurements}
+                fields={program.measurementFields}
+            />
         </div>
     );
 }
 
-async function HistoriqueSection({ userId }: { userId: number }) {
-    const histories = await getAllExerciseHistories(userId);
+async function HistoriqueSection({ userId, program }: { userId: number; program: Program }) {
+    const histories = await getAllExerciseHistories(userId, program);
     const exercises = Object.keys(histories).map((key) => ({ key, name: getExerciseName(key) }));
     return (
         <PerfHistoryView
@@ -148,7 +149,7 @@ export default async function SuiviPage({
 }) {
     const { tab } = await searchParams;
     const { userId } = (await getSession())!;
-    const program = getProgram(await getUserProgramId(userId));
+    const { program, row } = (await getActiveProgram(userId))!;
     const { features } = program;
 
     const poidsTab: SuiviTab = {
@@ -160,18 +161,18 @@ export default async function SuiviPage({
         value: "mensurations",
         label: "Mensur.",
         content: (
-            <MensurationsSection userId={userId} showNote={features.measurementsPrimary} />
+            <MensurationsSection userId={userId} program={program} />
         ),
     };
     const perfTab: SuiviTab = {
         value: "historique",
         label: "Perf",
-        content: <HistoriqueSection userId={userId} />,
+        content: <HistoriqueSection userId={userId} program={program} />,
     };
     const photosTab: SuiviTab = {
         value: "photos",
         label: "Photos",
-        content: <PhotosSection userId={userId} />,
+        content: <PhotosSection userId={userId} startDate={row.startDate} />,
     };
 
     // Mensurations en premier pour les programmes qui en font l'indicateur clé ;

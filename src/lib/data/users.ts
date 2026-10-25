@@ -47,10 +47,6 @@ export async function getUserProgramId(id: number): Promise<string | null> {
     return rows[0]?.programId ?? null;
 }
 
-export async function setUserProgram(id: number, programId: string): Promise<void> {
-    await db.update(users).set({ programId }).where(eq(users.id, id));
-}
-
 /**
  * Supprime un compte. Les données liées partent en cascade (voir schéma), sauf
  * la bibliothèque nutrition (aliments et repas) qui est partagée : on détache

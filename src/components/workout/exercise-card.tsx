@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { HelpCircle, Check, PlayCircle, Zap, Minus, Plus } from "lucide-react";
+import { HelpCircle, Check, PlayCircle, Zap, Minus, Plus, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -66,6 +66,12 @@ export function ExerciseCard({
                     <HowToDialog block={block} />
                 </div>
                 {block.notes ? <p className="text-muted-foreground text-sm">{block.notes}</p> : null}
+                {block.progression ? (
+                    <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
+                        <TrendingUp className="mt-0.5 size-3.5 shrink-0" />
+                        <span>Cran suivant (optionnel) : {block.progression}</span>
+                    </p>
+                ) : null}
                 {showIntensification && block.intensification ? (
                     <p className="bg-primary/10 text-primary flex items-start gap-1.5 rounded-md p-2 text-sm">
                         <Zap className="mt-0.5 size-3.5 shrink-0" />

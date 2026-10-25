@@ -4,12 +4,14 @@ import { SESSIONS } from "./sessions";
 import { LEXICON } from "./lexicon";
 import { DEFAULT_PROTEIN_GOAL, DEFAULT_CALORIE_GOAL } from "@/lib/nutrition";
 import { MASSE_FEMME } from "./masse-femme";
+import { FESSIERS_POSTURE } from "./fessiers-posture";
 import { LEGACY_EXERCISES } from "./revisions";
 
 export * from "./types";
 export { SESSIONS } from "./sessions";
 export { LEXICON, youtubeSearchUrl } from "./lexicon";
 export { MASSE_FEMME } from "./masse-femme";
+export { FESSIERS_POSTURE } from "./fessiers-posture";
 export { EXERCISE_VARIANTS, variantsFor } from "./variants";
 export { sessionForDate } from "./revisions";
 
@@ -199,6 +201,10 @@ export const DEFAULT_PROGRAM_ID: ProgramId = "programme-58";
 export const PROGRAMME_58: Program = {
     id: "programme-58",
     label: "Programme 58 jours",
+    shortLabel: "58 jours",
+    inCatalog: true,
+    equipment: ["Barre de traction", "Bandes 10/20/30 kg", "Corde à sauter"],
+    equipmentOptional: ["Sac à dos lesté"],
     length: PROGRAM_LENGTH,
     hasReferencePage: true,
     sessions: SESSIONS,
@@ -248,6 +254,7 @@ export const PROGRAMME_58: Program = {
 const PROGRAMS: Record<ProgramId, Program> = {
     "programme-58": PROGRAMME_58,
     "masse-femme": MASSE_FEMME,
+    "fessiers-posture": FESSIERS_POSTURE,
 };
 
 /** Programme d'un utilisateur ; NULL/inconnu ⇒ programme 58 (compte historique). */
@@ -255,11 +262,22 @@ export function getProgram(programId: string | null | undefined): Program {
     return PROGRAMS[(programId ?? DEFAULT_PROGRAM_ID) as ProgramId] ?? PROGRAMME_58;
 }
 
+/** Programmes proposés au catalogue (inscription, ajout d'un programme). */
+export const CATALOG: Program[] = Object.values(PROGRAMS).filter((p) => p.inCatalog);
+
 /** Options proposées au sélecteur d'inscription. */
-export const PROGRAM_OPTIONS: { id: ProgramId; label: string }[] = [
-    { id: "programme-58", label: PROGRAMME_58.label },
-    { id: "masse-femme", label: MASSE_FEMME.label },
-];
+export const PROGRAM_OPTIONS: { id: ProgramId; label: string }[] = CATALOG.map((p) => ({
+    id: p.id,
+    label: p.label,
+}));
+
+/**
+ * Types de séance d'un programme. Sert à rattacher les séances enregistrées
+ * avant le multi-programme (program_id NULL) au programme qui les a produites.
+ */
+export function programDayTypes(program: Program): string[] {
+    return Object.keys(program.sessions);
+}
 
 // Table nom d'exercice (tous programmes) pour l'historique de perfs.
 const EXERCISE_NAME_MAP: Map<string, string> = (() => {

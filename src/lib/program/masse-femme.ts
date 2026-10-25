@@ -285,6 +285,13 @@ const WEEKDAY_TO_DAYTYPE: Record<number, DayType> = {
 export const MASSE_FEMME: Program = {
     id: "masse-femme",
     label: "Prise de masse — femme",
+    shortLabel: "Masse femme",
+    // Remplacé au catalogue par « fessiers-posture » ; reste suivi par les comptes existants.
+    inCatalog: false,
+    equipment: ["Tapis de yoga"],
+    equipmentOptional: ["Chaise", "Bouteilles d'eau"],
+    trackingNote:
+        "Le tour de hanches et de cuisse racontent mieux ta progression que la balance. Un autre bon repère : réessaye un vêtement ajusté toutes les 2 semaines.",
     length: null,
     hasReferencePage: true,
     sessions: FEMME_SESSIONS,

@@ -5,8 +5,14 @@ import { z } from "zod";
 import { requireUserId, changePassword, getSession, setActingUser } from "@/lib/auth";
 import { setStartDate, getNutritionGoals, updateSettings } from "@/lib/data/settings";
 import { createInviteCode, canActAs } from "@/lib/data/invite-codes";
-import { getUserById, setUserProgram, deleteUser } from "@/lib/data/users";
-import { getProgram } from "@/lib/program";
+import { getUserById, deleteUser } from "@/lib/data/users";
+import {
+    getUserPrograms,
+    addUserProgram,
+    setUserProgramStatus,
+    setActiveProgramId,
+} from "@/lib/data/user-programs";
+import { CATALOG } from "@/lib/program";
 import { getFoodPortions, getLoggedEntries, setFoodPortion } from "@/lib/data/nutrition";
 import {
     getCustomFoods,
@@ -41,6 +47,8 @@ export async function setStartDateAction(date: string) {
     const userId = await requireUserId();
     const parsed = isoDate.parse(date);
     await setStartDate(userId, parsed);
+    // Crée la ligne du programme d'origine à partir de cette date.
+    await getUserPrograms(userId);
     revalidatePath("/");
     revalidatePath("/onboarding");
 }
@@ -117,9 +125,10 @@ export async function deletePhotoAction(id: number) {
     revalidatePath("/suivi");
 }
 
-const measure = z.number().min(0).max(300).nullable();
+const measure = z.number().min(0).max(300).nullable().optional();
 const measurementSchema = z.object({
     date: isoDate,
+    hips: measure,
     shoulders: measure,
     chest: measure,
     arm: measure,
@@ -213,20 +222,20 @@ const optInt = (max: number) => z.number().int().min(0).max(max).optional();
 const goalsSchema = z.object({
     proteinGoal: optInt(1000),
     calorieGoal: optInt(20000),
-    fatGoal: optInt(1000),
+    fatGoal: optInt(1000).nullable(),
     proteinGoal2: optInt(1000),
     calorieGoal2: optInt(20000),
-    fatGoal2: optInt(1000),
+    fatGoal2: optInt(1000).nullable(),
     targetWeightKg: z.number().min(20).max(400).optional(),
+    holdPhase1: z.boolean().optional(),
+    creatine: z.boolean().optional(),
 });
 
 export async function setNutritionGoalsAction(input: z.infer<typeof goalsSchema>) {
     const userId = await requireUserId();
     const patch = goalsSchema.parse(input);
     await updateSettings(userId, patch);
-    revalidatePath("/");
-    revalidatePath("/parametres");
-    revalidatePath("/suivi");
+    revalidatePath("/", "layout");
 }
 
 export async function generateInviteCodeAction() {
@@ -266,11 +275,45 @@ export async function switchBackAction() {
     revalidatePath("/", "layout");
 }
 
-/** Change le programme du compte actif (corrige un mauvais choix à l'inscription). */
-export async function setProgramAction(programId: string) {
+// ─── Programmes suivis ───
+
+const programIdSchema = z.string().min(1).max(32);
+
+/** Bascule la vue de l'app sur un autre programme suivi (mémorisé). */
+export async function setActiveProgramAction(programId: string) {
     const userId = await requireUserId();
-    const normalized = getProgram(z.string().min(1).max(32).parse(programId)).id;
-    await setUserProgram(userId, normalized);
+    const id = programIdSchema.parse(programId);
+    const rows = await getUserPrograms(userId);
+    if (!rows.some((r) => r.programId === id && r.status === "active")) {
+        throw new Error("Programme non suivi.");
+    }
+    await setActiveProgramId(userId, id);
+    revalidatePath("/", "layout");
+}
+
+/** Ajoute un programme du catalogue (ou réactive un programme déjà suivi). */
+export async function addProgramAction(programId: string, startDate: string) {
+    const userId = await requireUserId();
+    const id = programIdSchema.parse(programId);
+    const date = isoDate.parse(startDate);
+    if (!CATALOG.some((p) => p.id === id)) throw new Error("Programme inconnu.");
+    await addUserProgram(userId, id, date);
+    await setActiveProgramId(userId, id);
+    revalidatePath("/", "layout");
+}
+
+/** Met en pause ou réactive un programme. Les données sont toujours conservées. */
+export async function setProgramStatusAction(programId: string, paused: boolean) {
+    const userId = await requireUserId();
+    const id = programIdSchema.parse(programId);
+    const rows = await getUserPrograms(userId);
+    const target = rows.find((r) => r.programId === id);
+    if (!target) throw new Error("Programme non suivi.");
+    if (paused && !rows.some((r) => r.programId !== id && r.status === "active")) {
+        throw new Error("Garde au moins un programme actif.");
+    }
+    await setUserProgramStatus(userId, id, paused ? "paused" : "active");
+    if (!paused) await setActiveProgramId(userId, id);
     revalidatePath("/", "layout");
 }
 

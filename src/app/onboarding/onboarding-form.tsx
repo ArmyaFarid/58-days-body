@@ -74,7 +74,7 @@ export function OnboardingForm({
                     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
                         <p className="text-muted-foreground text-sm">
                             Choisis la date de début du programme. Elle sert à calculer ton jour et ta
-                            phase. Rappel : photo du jour 1 aujourd&apos;hui.
+                            phase.{photosReminder ? " Rappel : photo du jour 1 aujourd'hui." : ""}
                         </p>
                         <div className="flex flex-col gap-1.5">
                             <Label htmlFor="startDate">Date de début</Label>

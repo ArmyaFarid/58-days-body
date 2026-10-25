@@ -2,7 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { settings } from "@/lib/db/schema";
-import { getUserProgramId } from "@/lib/data/users";
+import { getActiveProgram, updateUserProgram, type UserProgramPatch } from "@/lib/data/user-programs";
 import { getProgram, getDayNumber } from "@/lib/program";
 import { todayISO, fromISO } from "@/lib/date";
 
@@ -29,29 +29,12 @@ export interface NutritionGoals {
     fatGoal: number | null;
 }
 
-async function loadSettings(userId: number) {
-    const rows = await db
-        .select({
-            startDate: settings.startDate,
-            proteinGoal: settings.proteinGoal,
-            calorieGoal: settings.calorieGoal,
-            fatGoal: settings.fatGoal,
-            proteinGoal2: settings.proteinGoal2,
-            calorieGoal2: settings.calorieGoal2,
-            fatGoal2: settings.fatGoal2,
-            targetWeightKg: settings.targetWeightKg,
-        })
-        .from(settings)
-        .where(eq(settings.userId, userId))
-        .limit(1);
-    return rows[0] ?? null;
-}
-
-/** Objectifs nutrition pour la PHASE COURANTE (secours = défauts du programme). */
+/** Objectifs nutrition du PROGRAMME ACTIF, pour sa phase courante (secours = défauts du programme). */
 export async function getNutritionGoals(userId: number): Promise<NutritionGoals> {
-    const [row, programId] = await Promise.all([loadSettings(userId), getUserProgramId(userId)]);
-    const program = getProgram(programId);
-    const dayNumber = row?.startDate ? getDayNumber(row.startDate, fromISO(todayISO())) : 1;
+    const active = await getActiveProgram(userId);
+    const program = active?.program ?? getProgram(null);
+    const row = active?.row ?? null;
+    const dayNumber = row ? getDayNumber(row.startDate, fromISO(todayISO())) : 1;
     const phase = program.getPhase(dayNumber);
     const usePhase2 =
         program.nutritionPhase2Key != null && phase?.key === program.nutritionPhase2Key;
@@ -66,18 +49,23 @@ export async function getNutritionGoals(userId: number): Promise<NutritionGoals>
 /** Objectifs par phase tels que STOCKÉS (avec défauts programme) — pour les réglages. */
 export interface SettingsView {
     targetWeightKg: number | null;
+    holdPhase1: boolean;
+    creatine: boolean;
     phase1: NutritionGoals;
     phase2: NutritionGoals;
 }
 
 export async function getSettingsView(userId: number): Promise<SettingsView> {
-    const [row, programId] = await Promise.all([loadSettings(userId), getUserProgramId(userId)]);
-    const program = getProgram(programId);
+    const active = await getActiveProgram(userId);
+    const program = active?.program ?? getProgram(null);
+    const row = active?.row ?? null;
     const d1 = program.nutritionForPhase(null);
     const p2key = program.nutritionPhase2Key ?? null;
     const d2 = program.nutritionForPhase(p2key);
     return {
         targetWeightKg: row?.targetWeightKg ?? null,
+        holdPhase1: row?.holdPhase1 ?? false,
+        creatine: row?.creatine ?? false,
         phase1: {
             proteinGoal: row?.proteinGoal ?? d1.protein,
             calorieGoal: row?.calorieGoal ?? d1.calories,
@@ -91,22 +79,9 @@ export async function getSettingsView(userId: number): Promise<SettingsView> {
     };
 }
 
-export interface GoalUpdate {
-    proteinGoal?: number;
-    calorieGoal?: number;
-    fatGoal?: number | null;
-    proteinGoal2?: number;
-    calorieGoal2?: number;
-    fatGoal2?: number | null;
-    targetWeightKg?: number | null;
-}
-
-/** Met à jour uniquement les champs fournis (le reste est inchangé). */
-export async function updateSettings(userId: number, patch: GoalUpdate): Promise<void> {
-    const set: Record<string, number | null> = {};
-    for (const [k, v] of Object.entries(patch)) {
-        if (v !== undefined) set[k] = v;
-    }
-    if (Object.keys(set).length === 0) return;
-    await db.update(settings).set(set).where(eq(settings.userId, userId));
+/** Met à jour les réglages du programme actif (uniquement les champs fournis). */
+export async function updateSettings(userId: number, patch: UserProgramPatch): Promise<void> {
+    const active = await getActiveProgram(userId);
+    if (!active) return;
+    await updateUserProgram(userId, active.row.programId, patch);
 }

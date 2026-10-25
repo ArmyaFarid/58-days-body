@@ -10,6 +10,7 @@ export interface Measurement {
     arm: number | null;
     waist: number | null;
     thigh: number | null;
+    hips: number | null;
 }
 
 export async function getMeasurements(userId: number): Promise<Measurement[]> {
@@ -25,6 +26,7 @@ export async function getMeasurements(userId: number): Promise<Measurement[]> {
         arm: r.arm,
         waist: r.waist,
         thigh: r.thigh,
+        hips: r.hips,
     }));
 }
 
@@ -46,18 +48,21 @@ export async function getMeasurementForDate(
         arm: r.arm,
         waist: r.waist,
         thigh: r.thigh,
+        hips: r.hips,
     };
 }
 
-export type MeasurementValues = Omit<Measurement, "date">;
+/** Champ absent (undefined) = non modifié. */
+export type MeasurementValues = Partial<Omit<Measurement, "date">>;
 
 export async function upsertMeasurement(
     userId: number,
     date: string,
     values: MeasurementValues,
 ): Promise<void> {
-    await db
-        .insert(measurements)
-        .values({ userId, date, ...values })
-        .onConflictDoUpdate({ target: [measurements.userId, measurements.date], set: values });
+    const set = Object.fromEntries(Object.entries(values).filter(([, v]) => v !== undefined));
+    const query = db.insert(measurements).values({ userId, date, ...set });
+    await (Object.keys(set).length > 0
+        ? query.onConflictDoUpdate({ target: [measurements.userId, measurements.date], set })
+        : query.onConflictDoNothing());
 }

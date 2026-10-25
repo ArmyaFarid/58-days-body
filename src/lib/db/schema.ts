@@ -18,6 +18,8 @@ export const users = pgTable("users", {
     // Programme suivi par l'utilisateur. NULL ⇒ « programme-58 » (défaut, compte
     // historique). Renseigné au signup pour les nouveaux comptes.
     programId: text("program_id"),
+    // Dernier programme consulté (sélecteur de l'accueil). NULL ⇒ programme d'origine.
+    activeProgramId: text("active_program_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -55,6 +57,38 @@ export const settings = pgTable("settings", {
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Programmes suivis par une personne, en parallèle. Chaque programme a sa date
+// de début, son statut et ses réglages (objectifs, poids cible, rythme). Créé
+// au premier accès à partir de `settings` pour les comptes existants : la table
+// `settings` n'est jamais modifiée par ce mécanisme.
+export const userPrograms = pgTable(
+    "user_programs",
+    {
+        id: serial("id").primaryKey(),
+        userId: integer("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "cascade" }),
+        programId: text("program_id").notNull(),
+        startDate: date("start_date").notNull(),
+        // « active » | « paused » — en pause, le programme sort du sélecteur
+        // mais toutes ses données sont conservées.
+        status: text("status").notNull().default("active"),
+        // Rester (ou revenir) au rythme de la phase 1 d'entraînement.
+        holdPhase1: boolean("hold_phase1").default(false).notNull(),
+        // Case créatine dans la checklist (programmes où elle est optionnelle).
+        creatine: boolean("creatine").default(false).notNull(),
+        proteinGoal: integer("protein_goal"),
+        calorieGoal: integer("calorie_goal"),
+        fatGoal: integer("fat_goal"),
+        proteinGoal2: integer("protein_goal_2"),
+        calorieGoal2: integer("calorie_goal_2"),
+        fatGoal2: integer("fat_goal_2"),
+        targetWeightKg: real("target_weight_kg"),
+        createdAt: timestamp("created_at").defaultNow().notNull(),
+    },
+    (t) => [unique("user_programs_user_program").on(t.userId, t.programId)],
+);
+
 export const weightLogs = pgTable(
     "weight_logs",
     {
@@ -76,8 +110,15 @@ export const workoutSessions = pgTable(
         phase: text("phase").notNull(),
         completed: boolean("completed").default(false).notNull(),
         completedAt: timestamp("completed_at"),
+        // Programme sous lequel la séance a été faite. NULL = séance antérieure
+        // au multi-programme : rattachée à son programme via `day_type`.
+        programId: text("program_id"),
     },
-    (t) => [unique("workout_sessions_user_date").on(t.userId, t.date)],
+    (t) => [
+        unique("workout_sessions_user_program_date")
+            .on(t.userId, t.programId, t.date)
+            .nullsNotDistinct(),
+    ],
 );
 
 export const setLogs = pgTable(
@@ -185,6 +226,7 @@ export const measurements = pgTable(
         arm: real("arm"),
         waist: real("waist"),
         thigh: real("thigh"),
+        hips: real("hips"),
     },
     (t) => [unique("measurements_user_date").on(t.userId, t.date)],
 );

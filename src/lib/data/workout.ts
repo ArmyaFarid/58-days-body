@@ -1,7 +1,20 @@
 import "server-only";
-import { and, desc, eq, lt } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, or, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { workoutSessions, setLogs } from "@/lib/db/schema";
+import { programDayTypes, type Program } from "@/lib/program";
+
+/**
+ * Séances d'un programme : celles enregistrées sous ce programme, plus les
+ * séances antérieures au multi-programme (program_id NULL) dont le type
+ * appartient à ce programme.
+ */
+function programScope(program: Program): SQL {
+    return or(
+        eq(workoutSessions.programId, program.id),
+        and(isNull(workoutSessions.programId), inArray(workoutSessions.dayType, programDayTypes(program))),
+    )!;
+}
 
 export interface SetLog {
     exerciseKey: string;
@@ -22,6 +35,7 @@ export interface WorkoutSession {
 
 export async function getOrCreateSession(
     userId: number,
+    program: Program,
     date: string,
     dayType: string,
     phase: string,
@@ -29,7 +43,9 @@ export async function getOrCreateSession(
     const existing = await db
         .select()
         .from(workoutSessions)
-        .where(and(eq(workoutSessions.userId, userId), eq(workoutSessions.date, date)))
+        .where(
+            and(eq(workoutSessions.userId, userId), eq(workoutSessions.date, date), programScope(program)),
+        )
         .limit(1);
     if (existing[0]) {
         const r = existing[0];
@@ -37,7 +53,7 @@ export async function getOrCreateSession(
     }
     const inserted = await db
         .insert(workoutSessions)
-        .values({ userId, date, dayType, phase })
+        .values({ userId, programId: program.id, date, dayType, phase })
         .returning();
     const r = inserted[0];
     return { id: r.id, date: r.date, dayType: r.dayType, phase: r.phase, completed: r.completed };
@@ -46,12 +62,15 @@ export async function getOrCreateSession(
 /** Lecture seule : la séance du jour si elle existe déjà (sans la créer). */
 export async function getSessionForDate(
     userId: number,
+    program: Program,
     date: string,
 ): Promise<WorkoutSession | null> {
     const rows = await db
         .select()
         .from(workoutSessions)
-        .where(and(eq(workoutSessions.userId, userId), eq(workoutSessions.date, date)))
+        .where(
+            and(eq(workoutSessions.userId, userId), eq(workoutSessions.date, date), programScope(program)),
+        )
         .limit(1);
     const r = rows[0];
     if (!r) return null;
@@ -70,9 +89,10 @@ export async function getSetLogsForSession(sessionId: number): Promise<SetLog[]>
     }));
 }
 
-/** Les séries de la dernière fois que cet exercice a été fait par l'utilisateur. */
+/** Les séries de la dernière fois que cet exercice a été fait sous ce programme. */
 export async function getLastPerformance(
     userId: number,
+    program: Program,
     exerciseKey: string,
     beforeDate: string,
 ): Promise<SetLog[]> {
@@ -90,6 +110,7 @@ export async function getLastPerformance(
         .where(
             and(
                 eq(workoutSessions.userId, userId),
+                programScope(program),
                 eq(setLogs.exerciseKey, exerciseKey),
                 lt(workoutSessions.date, beforeDate),
             ),
@@ -192,6 +213,7 @@ export interface ExerciseHistoryEntry {
 
 export async function getAllExerciseHistories(
     userId: number,
+    program: Program,
 ): Promise<Record<string, ExerciseHistoryEntry[]>> {
     const rows = await db
         .select({
@@ -204,7 +226,7 @@ export async function getAllExerciseHistories(
         })
         .from(setLogs)
         .innerJoin(workoutSessions, eq(setLogs.sessionId, workoutSessions.id))
-        .where(eq(workoutSessions.userId, userId))
+        .where(and(eq(workoutSessions.userId, userId), programScope(program)))
         .orderBy(desc(workoutSessions.date), setLogs.setIndex);
 
     const result: Record<string, ExerciseHistoryEntry[]> = {};
@@ -219,4 +241,24 @@ export async function getAllExerciseHistories(
         entry.sets.push({ setIndex: r.setIndex, reps: r.reps, band: r.band });
     }
     return result;
+}
+
+/** Dates des séances complétées sous ce programme, depuis `fromDate` (inclus). */
+export async function getCompletedSessionDates(
+    userId: number,
+    program: Program,
+    fromDate: string,
+): Promise<string[]> {
+    const rows = await db
+        .select({ date: workoutSessions.date })
+        .from(workoutSessions)
+        .where(
+            and(
+                eq(workoutSessions.userId, userId),
+                programScope(program),
+                eq(workoutSessions.completed, true),
+                gte(workoutSessions.date, fromDate),
+            ),
+        );
+    return rows.map((r) => r.date);
 }

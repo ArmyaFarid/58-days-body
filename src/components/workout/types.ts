@@ -10,6 +10,7 @@ export interface ExerciseBlock {
     reps: string;
     band?: string;
     notes?: string;
+    progression?: string;
     intensification?: string;
     bandMode: "resistance" | "assist" | "none" | "time";
     lexiconKey: string;

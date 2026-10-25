@@ -9,7 +9,13 @@ export type DayType =
     // Programme « masse-femme » (3 séances/semaine)
     | "femme-a"
     | "femme-b"
-    | "femme-c";
+    | "femme-c"
+    // Programme « fessiers-posture » (phase 1 : A/B/C, phase 2 : 1/2)
+    | "fpb-a"
+    | "fpb-b"
+    | "fpb-c"
+    | "fpb-1"
+    | "fpb-2";
 
 export type PhaseKey = "bloc1" | "delestage" | "bloc2" | "taper";
 
@@ -33,6 +39,8 @@ export interface Exercise {
     time?: boolean;
     /** Technique d'intensification affichée en Bloc 2 (jours 30–54). */
     intensification?: string;
+    /** Cran suivant (progression douce, optionnelle). */
+    progression?: string;
 }
 
 export interface Session {
@@ -44,6 +52,8 @@ export interface Session {
     isCircuit?: boolean;
     circuitNote?: string;
     finisher?: string;
+    /** Rappel de style d'exécution affiché en tête de séance. */
+    styleNote?: string;
 }
 
 export interface LexiconEntry {
@@ -55,7 +65,7 @@ export interface LexiconEntry {
 
 // ─── Abstraction multi-programmes ───
 
-export type ProgramId = "programme-58" | "masse-femme";
+export type ProgramId = "programme-58" | "masse-femme" | "fessiers-posture";
 
 export type HabitFieldKey = "creatine" | "kcal3000" | "protein140" | "sleepBefore23";
 
@@ -78,6 +88,32 @@ export interface ProgramFeatures {
     sessionHabit: boolean;
     /** Sélecteur de variante/complexité par exercice (suivi + affiché). */
     variants: boolean;
+    /** Case créatine activable dans les réglages (désactivée par défaut). */
+    creatineOptional?: boolean;
+    /** Série de semaines complètes = indicateur principal de l'accueil. */
+    weeklyStreak?: boolean;
+}
+
+/** Contexte de calendrier propre au programme suivi (jour, choix de phase). */
+export interface ScheduleContext {
+    dayNumber: number;
+    holdPhase1: boolean;
+}
+
+/** Phase d'entraînement (rythme hebdomadaire), distincte de la phase nutrition. */
+export interface TrainingPhase {
+    key: string;
+    /** Ex. « Phase 1 (3 séances/sem) ». */
+    label: string;
+    shortLabel: string;
+    perWeek: number;
+}
+
+export type MeasurementKey = "hips" | "shoulders" | "chest" | "arm" | "waist" | "thigh";
+
+export interface ProgramSummarySection {
+    title: string;
+    items: string[];
 }
 
 /** Phase courante affichée à l'accueil. */
@@ -114,6 +150,24 @@ export interface Program {
     id: ProgramId;
     /** Libellé pour le sélecteur d'inscription. */
     label: string;
+    /** Libellé court pour le sélecteur de l'accueil. */
+    shortLabel: string;
+    /** Proposé dans le catalogue (inscription, ajout d'un programme). */
+    inCatalog: boolean;
+    equipment: string[];
+    equipmentOptional: string[];
+    /** Objectif affiché sur l'accueil. */
+    objective?: string;
+    /** Note affichée sous le tracker nutrition. */
+    nutritionNote?: string;
+    /** Note affichée en tête des mensurations (Suivi). */
+    trackingNote?: string;
+    /** Mensurations proposées, dans l'ordre (défaut : épaules, poitrine, bras, taille, cuisse). */
+    measurementFields?: MeasurementKey[];
+    /** Variantes proposées par exercice (sinon l'échelle globale). */
+    variants?: Record<string, string[]>;
+    /** Sections de la page Programme (programmes à page générique). */
+    summary?: ProgramSummarySection[];
     /** Durée en jours, ou `null` si ouvert (sans date de fin). */
     length: number | null;
     /** Dispose d'une page de référence dédiée (/programme). */
@@ -126,7 +180,9 @@ export interface Program {
     /** Libellés custom par habitude (sinon libellé par défaut). */
     habitLabels?: Partial<Record<HabitFieldKey, { label: string; short: string }>>;
     /** Type de séance pour un jour de la semaine (0 = dimanche … 6 = samedi). */
-    dayTypeForWeekday(weekday: number): DayType;
+    dayTypeForWeekday(weekday: number, ctx?: ScheduleContext): DayType;
+    /** Rythme d'entraînement courant (programmes à phases d'entraînement). */
+    trainingPhase?(ctx: ScheduleContext): TrainingPhase | null;
     isTrainingDay(dayType: DayType, phaseKey: string | null): boolean;
     getPhase(dayNumber: number): PhaseInfo | null;
     /** Objectifs nutrition par défaut pour une phase (secours si réglages NULL). */

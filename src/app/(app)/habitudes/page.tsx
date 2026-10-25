@@ -6,9 +6,8 @@ import { HabitHistoryGrid } from "@/components/habit-history-grid";
 import { getSession } from "@/lib/auth";
 import { getHabit, getAllHabits } from "@/lib/data/habits";
 import { getSessionForDate } from "@/lib/data/workout";
-import { getUserProgramId } from "@/lib/data/users";
+import { getActiveProgram } from "@/lib/data/user-programs";
 import { habitMetaFor } from "@/lib/habits-meta";
-import { getProgram } from "@/lib/program";
 import { todayISO } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import type { HabitField } from "@/lib/data/habits";
@@ -29,14 +28,13 @@ function computeStreak(trueDates: Set<string>, today: string): number {
 export default async function HabitudesPage() {
     const { userId } = (await getSession())!;
     const today = todayISO();
-    const [habitToday, all, programId, workoutToday] = await Promise.all([
+    const { program, row } = (await getActiveProgram(userId))!;
+    const [habitToday, all, workoutToday] = await Promise.all([
         getHabit(userId, today),
         getAllHabits(userId),
-        getUserProgramId(userId),
-        getSessionForDate(userId, today),
+        getSessionForDate(userId, program, today),
     ]);
-    const program = getProgram(programId);
-    const meta = habitMetaFor(program);
+    const meta = habitMetaFor(program, { creatine: row.creatine });
 
     const trueSets: Record<HabitField, Set<string>> = {
         creatine: new Set(),

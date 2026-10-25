@@ -6,11 +6,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2, KeyRound, TriangleAlert, Palette, Target, Ticket, Copy, Users, Dumbbell } from "lucide-react";
+import { Loader2, KeyRound, TriangleAlert, Palette, Target, Ticket, Copy, Users, Dumbbell, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppearanceSettings } from "@/components/appearance-settings";
 import { AccountSwitcher } from "@/components/account-switcher";
-import { ProgramSelector } from "@/components/program-selector";
+import { MyPrograms, type FollowedProgram, type CatalogProgram } from "@/components/my-programs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,10 +57,20 @@ interface AccountsInfo {
 }
 
 interface SettingsViewProps {
-    programId: string;
-    features: { trackFat: boolean; targetWeight: boolean; multiPhase: boolean };
+    programLabel: string;
+    programs: { followed: FollowedProgram[]; catalog: CatalogProgram[]; today: string };
+    features: {
+        trackFat: boolean;
+        targetWeight: boolean;
+        multiPhase: boolean;
+        holdPhase1: boolean;
+        creatine: boolean;
+    };
+    phaseLabels: { phase1: string; phase2: string };
     settings: {
         targetWeightKg: number | null;
+        holdPhase1: boolean;
+        creatine: boolean;
         phase1: PhaseGoals;
         phase2: PhaseGoals;
     };
@@ -67,7 +78,15 @@ interface SettingsViewProps {
     accounts?: AccountsInfo;
 }
 
-export function SettingsView({ programId, features, settings, inviteCodes, accounts }: SettingsViewProps) {
+export function SettingsView({
+    programLabel,
+    programs,
+    features,
+    phaseLabels,
+    settings,
+    inviteCodes,
+    accounts,
+}: SettingsViewProps) {
     const router = useRouter();
     const {
         register,
@@ -104,6 +123,23 @@ export function SettingsView({ programId, features, settings, inviteCodes, accou
     );
     const [savingGoals, startGoals] = useTransition();
 
+    // Options du programme actif (enregistrées immédiatement).
+    const [holdPhase1, setHoldPhase1] = useState(settings.holdPhase1);
+    const [creatine, setCreatine] = useState(settings.creatine);
+    const [, startOption] = useTransition();
+
+    function saveOption(patch: { holdPhase1?: boolean; creatine?: boolean }, revert: () => void) {
+        startOption(async () => {
+            try {
+                await setNutritionGoalsAction(patch);
+                router.refresh();
+            } catch {
+                revert();
+                toast.error("Échec de l'enregistrement.");
+            }
+        });
+    }
+
     // Codes d'invitation.
     const [codes, setCodes] = useState(inviteCodes);
     const [generating, startGenerate] = useTransition();
@@ -122,7 +158,7 @@ export function SettingsView({ programId, features, settings, inviteCodes, accou
             proteinGoal: p1p,
             calorieGoal: p1c,
         };
-        if (features.trackFat) patch.fatGoal = Math.max(0, parseInt(p1Fat, 10) || 0);
+        if (features.trackFat) patch.fatGoal = parseFat(p1Fat);
         if (features.multiPhase) {
             const p2p = parseInt(p2Protein, 10);
             const p2c = parseInt(p2Calorie, 10);
@@ -132,7 +168,7 @@ export function SettingsView({ programId, features, settings, inviteCodes, accou
             }
             patch.proteinGoal2 = p2p;
             patch.calorieGoal2 = p2c;
-            if (features.trackFat) patch.fatGoal2 = Math.max(0, parseInt(p2Fat, 10) || 0);
+            if (features.trackFat) patch.fatGoal2 = parseFat(p2Fat);
         }
         if (features.targetWeight && targetWeight.trim()) {
             const tw = parseFloat(targetWeight.replace(",", "."));
@@ -212,17 +248,55 @@ export function SettingsView({ programId, features, settings, inviteCodes, accou
                 </Card>
             ) : null}
 
-            <Card>
+            <Card id="programmes">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
                         <Dumbbell className="size-4" />
-                        Programme
+                        Mes programmes
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <ProgramSelector current={programId} />
+                    <MyPrograms
+                        followed={programs.followed}
+                        catalog={programs.catalog}
+                        today={programs.today}
+                    />
                 </CardContent>
             </Card>
+
+            {features.holdPhase1 || features.creatine ? (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base">{programLabel} — options</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-2">
+                        {features.holdPhase1 ? (
+                            <ToggleRow
+                                checked={holdPhase1}
+                                label="Rester en phase 1 (3 séances/sem)"
+                                hint="Garde ou retrouve le rythme lun/mer/ven au lieu de 2 séances."
+                                onToggle={() => {
+                                    const next = !holdPhase1;
+                                    setHoldPhase1(next);
+                                    saveOption({ holdPhase1: next }, () => setHoldPhase1(!next));
+                                }}
+                            />
+                        ) : null}
+                        {features.creatine ? (
+                            <ToggleRow
+                                checked={creatine}
+                                label="Je prends de la créatine"
+                                hint="Ajoute la case créatine et son streak à la checklist."
+                                onToggle={() => {
+                                    const next = !creatine;
+                                    setCreatine(next);
+                                    saveOption({ creatine: next }, () => setCreatine(!next));
+                                }}
+                            />
+                        ) : null}
+                    </CardContent>
+                </Card>
+            ) : null}
 
             <Card>
                 <CardHeader>
@@ -240,12 +314,12 @@ export function SettingsView({ programId, features, settings, inviteCodes, accou
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
                         <Target className="size-4" />
-                        Objectifs nutrition
+                        Objectifs nutrition — {programLabel}
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
                     {features.multiPhase ? (
-                        <p className="text-muted-foreground text-sm font-medium">Phase 1 (prise rapide)</p>
+                        <p className="text-muted-foreground text-sm font-medium">{phaseLabels.phase1}</p>
                     ) : null}
                     <GoalInputs
                         idPrefix="p1"
@@ -260,7 +334,7 @@ export function SettingsView({ programId, features, settings, inviteCodes, accou
                     {features.multiPhase ? (
                         <>
                             <p className="text-muted-foreground mt-1 text-sm font-medium">
-                                Phase 2 (progression normale)
+                                {phaseLabels.phase2}
                             </p>
                             <GoalInputs
                                 idPrefix="p2"
@@ -458,6 +532,49 @@ export function SettingsView({ programId, features, settings, inviteCodes, accou
             </>
             ) : null}
         </div>
+    );
+}
+
+/** Champ lipides vide ⇒ pas d'objectif lipides pour cette phase. */
+function parseFat(v: string): number | null {
+    return v.trim() ? Math.max(0, parseInt(v, 10) || 0) : null;
+}
+
+function ToggleRow({
+    checked,
+    label,
+    hint,
+    onToggle,
+}: {
+    checked: boolean;
+    label: string;
+    hint: string;
+    onToggle: () => void;
+}) {
+    return (
+        <button
+            type="button"
+            role="switch"
+            aria-checked={checked}
+            onClick={onToggle}
+            className={cn(
+                "flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors",
+                checked ? "border-primary/50 bg-primary/10" : "border-border",
+            )}
+        >
+            <span
+                className={cn(
+                    "flex size-6 shrink-0 items-center justify-center rounded-md border",
+                    checked ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40",
+                )}
+            >
+                {checked ? <Check className="size-4" /> : null}
+            </span>
+            <span className="flex flex-col">
+                <span className="text-sm">{label}</span>
+                <span className="text-muted-foreground text-xs">{hint}</span>
+            </span>
+        </button>
     );
 }
 

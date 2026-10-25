@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, Loader2, Repeat, SkipForward } from "lucide-react";
+import { CheckCircle2, Gauge, Loader2, Repeat, SkipForward } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { completeSessionAction } from "@/lib/actions";
@@ -23,6 +23,7 @@ interface WorkoutViewProps {
     isCircuit: boolean;
     circuitNote?: string;
     finisher?: string;
+    styleNote?: string;
     exercises: ExerciseBlock[];
 }
 
@@ -38,6 +39,7 @@ export function WorkoutView({
     isCircuit,
     circuitNote,
     finisher,
+    styleNote,
     exercises,
 }: WorkoutViewProps) {
     const [rest, setRest] = useState<RestState | null>(null);
@@ -96,6 +98,12 @@ export function WorkoutView({
                     <p className="bg-muted mt-2 flex items-start gap-1.5 rounded-md p-2 text-sm">
                         <Repeat className="mt-0.5 size-3.5 shrink-0" />
                         {circuitNote}
+                    </p>
+                ) : null}
+                {styleNote ? (
+                    <p className="bg-muted mt-2 flex items-start gap-1.5 rounded-md p-2 text-sm">
+                        <Gauge className="mt-0.5 size-3.5 shrink-0" />
+                        {styleNote}
                     </p>
                 ) : null}
             </section>
