@@ -1,11 +1,13 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { settings, userPrograms, users } from "@/lib/db/schema";
 import { getProgram, getDayNumber, type Program, type ScheduleContext } from "@/lib/program";
 import { todayISO, fromISO } from "@/lib/date";
 
-export type ProgramStatus = "active" | "paused";
+// « abandoned » : retiré de « Mes programmes » mais toutes ses données sont
+// conservées ; le reprendre depuis le catalogue repart d'une nouvelle date.
+export type ProgramStatus = "active" | "paused" | "abandoned";
 
 export interface UserProgram {
     programId: string;
@@ -26,7 +28,7 @@ export interface UserProgram {
 export interface ActiveProgram {
     program: Program;
     row: UserProgram;
-    /** Tous les programmes suivis (actifs et en pause), ordre d'ajout. */
+    /** Programmes suivis (actifs et en pause, hors abandonnés), ordre d'ajout. */
     all: UserProgram[];
 }
 
@@ -34,7 +36,7 @@ function toRow(r: typeof userPrograms.$inferSelect): UserProgram {
     return {
         programId: r.programId,
         startDate: r.startDate,
-        status: r.status === "paused" ? "paused" : "active",
+        status: r.status === "paused" || r.status === "abandoned" ? r.status : "active",
         holdPhase1: r.holdPhase1,
         creatine: r.creatine,
         proteinGoal: r.proteinGoal,
@@ -51,7 +53,7 @@ async function loadRows(userId: number): Promise<UserProgram[]> {
     const rows = await db
         .select()
         .from(userPrograms)
-        .where(eq(userPrograms.userId, userId))
+        .where(and(eq(userPrograms.userId, userId), ne(userPrograms.status, "abandoned")))
         .orderBy(userPrograms.id);
     return rows.map(toRow);
 }
@@ -82,6 +84,16 @@ async function backfillFromSettings(userId: number): Promise<void> {
         .onConflictDoNothing();
 }
 
+/** Programmes abandonnés : toujours reprenables, même retirés du catalogue. */
+export async function getAbandonedProgramIds(userId: number): Promise<string[]> {
+    const rows = await db
+        .select({ programId: userPrograms.programId })
+        .from(userPrograms)
+        .where(and(eq(userPrograms.userId, userId), eq(userPrograms.status, "abandoned")));
+    return rows.map((r) => r.programId);
+}
+
+/** Programmes suivis, hors abandonnés. */
 export async function getUserPrograms(userId: number): Promise<UserProgram[]> {
     let rows = await loadRows(userId);
     if (rows.length === 0) {
@@ -91,7 +103,11 @@ export async function getUserPrograms(userId: number): Promise<UserProgram[]> {
     return rows;
 }
 
-/** Programme affiché : le dernier consulté s'il est actif, sinon le premier actif. */
+/**
+ * Programme affiché : le dernier consulté s'il est actif, sinon le premier actif.
+ * Tout en pause : le dernier consulté reste affiché (en pause). Aucun programme
+ * suivi (tout abandonné, ou pas encore d'onboarding) : null.
+ */
 export async function getActiveProgram(userId: number): Promise<ActiveProgram | null> {
     const [all, [u]] = await Promise.all([
         getUserPrograms(userId),
@@ -119,8 +135,12 @@ export async function addUserProgram(userId: number, programId: string, startDat
         .values({ userId, programId, startDate })
         .onConflictDoUpdate({
             target: [userPrograms.userId, userPrograms.programId],
-            // Déjà suivi : on le réactive sans toucher à sa date ni à ses réglages.
-            set: { status: "active" },
+            // Déjà suivi : on le réactive en gardant ses réglages. Un programme
+            // abandonné repart de la nouvelle date de début.
+            set: {
+                status: "active",
+                startDate: sql`case when ${userPrograms.status} = 'abandoned' then excluded.start_date else ${userPrograms.startDate} end`,
+            },
         });
 }
 

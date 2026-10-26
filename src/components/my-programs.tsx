@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Pause, Play, Plus } from "lucide-react";
+import { Loader2, Pause, Play, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { EquipmentBadges } from "@/components/equipment-badges";
-import { addProgramAction, setProgramStatusAction } from "@/lib/actions";
+import { abandonProgramAction, addProgramAction, setProgramStatusAction } from "@/lib/actions";
 
 export interface FollowedProgram {
     id: string;
@@ -48,16 +48,45 @@ export function MyPrograms({ followed, catalog, today }: MyProgramsProps) {
     const router = useRouter();
     const [pending, startTransition] = useTransition();
     const [busyId, setBusyId] = useState<string | null>(null);
+    const [toAbandon, setToAbandon] = useState<FollowedProgram | null>(null);
 
     function toggle(p: FollowedProgram) {
         setBusyId(p.id);
         startTransition(async () => {
             try {
-                await setProgramStatusAction(p.id, !p.paused);
+                const { error } = await setProgramStatusAction(p.id, !p.paused);
+                if (error) {
+                    toast.error(error);
+                    return;
+                }
                 toast.success(p.paused ? "Programme réactivé." : "Programme en pause. Données conservées.");
                 router.refresh();
-            } catch (err) {
-                toast.error(err instanceof Error ? err.message : "Échec de la mise à jour.");
+            } catch {
+                toast.error("Échec de la mise à jour.");
+            } finally {
+                setBusyId(null);
+            }
+        });
+    }
+
+    function confirmAbandon() {
+        if (!toAbandon) return;
+        const p = toAbandon;
+        setBusyId(p.id);
+        startTransition(async () => {
+            try {
+                const { error } = await abandonProgramAction(p.id);
+                if (error) {
+                    toast.error(error);
+                    return;
+                }
+                toast.success("Programme abandonné. Ses données sont conservées.");
+                setToAbandon(null);
+                // Dernier programme abandonné : rechargement complet vers le choix d'un programme.
+                if (followed.length === 1) window.location.assign("/");
+                else router.refresh();
+            } catch {
+                toast.error("Échec de l'abandon.");
             } finally {
                 setBusyId(null);
             }
@@ -85,28 +114,71 @@ export function MyPrograms({ followed, catalog, today }: MyProgramsProps) {
                                 </p>
                                 <p className="text-muted-foreground text-xs">{p.progress}</p>
                             </div>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="shrink-0"
-                                onClick={() => toggle(p)}
-                                disabled={pending}
-                            >
-                                {pending && busyId === p.id ? (
-                                    <Loader2 className="size-4 animate-spin" />
-                                ) : p.paused ? (
-                                    <Play className="size-4" />
-                                ) : (
-                                    <Pause className="size-4" />
-                                )}
-                                {p.paused ? "Réactiver" : "Pause"}
-                            </Button>
+                            <div className="flex shrink-0 gap-1">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => toggle(p)}
+                                    disabled={pending}
+                                >
+                                    {pending && busyId === p.id && !toAbandon ? (
+                                        <Loader2 className="size-4 animate-spin" />
+                                    ) : p.paused ? (
+                                        <Play className="size-4" />
+                                    ) : (
+                                        <Pause className="size-4" />
+                                    )}
+                                    {p.paused ? "Réactiver" : "Pause"}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-muted-foreground"
+                                    onClick={() => setToAbandon(p)}
+                                    disabled={pending}
+                                    aria-label={`Abandonner ${p.label}`}
+                                >
+                                    <X className="size-4" />
+                                </Button>
+                            </div>
                         </div>
                         <EquipmentBadges program={p} />
                     </li>
                 ))}
             </ul>
+
+            <Dialog open={toAbandon != null} onOpenChange={(open) => (open ? null : setToAbandon(null))}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle>Abandonner {toAbandon?.label} ?</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-muted-foreground text-sm">
+                        Le programme disparaît de tes programmes et du sélecteur. Tes séances et tes
+                        réglages sont conservés : tu pourras le reprendre depuis le catalogue, avec une
+                        nouvelle date de début.
+                    </p>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            className="h-11 flex-1"
+                            onClick={() => setToAbandon(null)}
+                            disabled={pending}
+                        >
+                            Annuler
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            className="h-11 flex-1"
+                            onClick={confirmAbandon}
+                            disabled={pending}
+                        >
+                            {pending ? <Loader2 className="size-4 animate-spin" /> : "Abandonner"}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {catalog.length > 0 ? <AddProgramDialog catalog={catalog} today={today} /> : null}
         </div>

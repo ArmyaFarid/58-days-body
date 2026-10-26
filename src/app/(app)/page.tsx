@@ -9,6 +9,7 @@ import { QuickWeight } from "@/components/quick-weight";
 import { HabitChecklist } from "@/components/habit-checklist";
 import { NutritionTracker } from "@/components/nutrition/nutrition-tracker";
 import { ProgramSwitcher } from "@/components/program-switcher";
+import { ResumeProgramButton } from "@/components/resume-program-button";
 import { getSession as getAuthSession } from "@/lib/auth";
 import { getNutritionGoals } from "@/lib/data/settings";
 import { getActiveProgram, scheduleContext } from "@/lib/data/user-programs";
@@ -70,8 +71,10 @@ export default async function DashboardPage() {
     const streak = program.features.weeklyStreak
         ? computeWeeklyStreak(program, startDate, row.holdPhase1, completedDates, today)
         : null;
+    // Tout en pause : le programme affiché (en pause) reste dans le sélecteur.
+    const paused = row.status === "paused";
     const switcherPrograms = all
-        .filter((r) => r.status === "active")
+        .filter((r) => r.status === "active" || r.programId === row.programId)
         .map((r) => ({ id: r.programId, label: getProgram(r.programId).shortLabel }));
 
     const length = program.length;
@@ -191,7 +194,18 @@ export default async function DashboardPage() {
 
     return (
         <div className="flex flex-col gap-4 p-4">
-            <ProgramSwitcher programs={switcherPrograms} current={program.id} />
+            <ProgramSwitcher key={program.id} programs={switcherPrograms} current={program.id} />
+
+            {paused ? (
+                <Card className="border-amber-500/40 bg-amber-500/5">
+                    <CardContent className="flex items-center gap-3 py-3">
+                        <p className="flex-1 text-sm">
+                            Ce programme est en pause. Tes données sont conservées.
+                        </p>
+                        <ResumeProgramButton programId={program.id} />
+                    </CardContent>
+                </Card>
+            ) : null}
 
             {/* En-tête jour / phase */}
             <section>

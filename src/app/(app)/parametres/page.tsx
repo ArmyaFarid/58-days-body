@@ -2,7 +2,7 @@ import { SettingsView } from "@/components/settings-view";
 import type { FollowedProgram } from "@/components/my-programs";
 import { getSession } from "@/lib/auth";
 import { getSettingsView } from "@/lib/data/settings";
-import { getActiveProgram, scheduleContext } from "@/lib/data/user-programs";
+import { getActiveProgram, getAbandonedProgramIds, scheduleContext } from "@/lib/data/user-programs";
 import { getInviteCodes, getInvitedUsers } from "@/lib/data/invite-codes";
 import { getProgram, CATALOG, type Program } from "@/lib/program";
 import type { UserProgram } from "@/lib/data/user-programs";
@@ -19,9 +19,10 @@ function progressText(program: Program, row: UserProgram): string {
 export default async function ParametresPage() {
     const session = (await getSession())!;
     const userId = session.userId;
-    const [settings, active, inviteCodes, invitedUsers] = await Promise.all([
+    const [settings, active, abandonedIds, inviteCodes, invitedUsers] = await Promise.all([
         getSettingsView(userId),
         getActiveProgram(userId),
+        getAbandonedProgramIds(userId),
         getInviteCodes(userId),
         getInvitedUsers(session.ownerUserId),
     ]);
@@ -39,7 +40,12 @@ export default async function ParametresPage() {
             equipmentOptional: p.equipmentOptional,
         };
     });
-    const catalog = CATALOG.filter((p) => !all.some((r) => r.programId === p.id)).map((p) => ({
+    // Catalogue + programmes abandonnés (reprenables même s'ils ont quitté le catalogue).
+    const offered = [
+        ...CATALOG,
+        ...abandonedIds.map((id) => getProgram(id)).filter((p) => !CATALOG.includes(p)),
+    ];
+    const catalog = offered.filter((p) => !all.some((r) => r.programId === p.id)).map((p) => ({
         id: p.id,
         label: p.label,
         objective: p.objective,
@@ -48,7 +54,10 @@ export default async function ParametresPage() {
     }));
 
     return (
+        // Remonte la vue quand le programme affiché change (pause, abandon, bascule) :
+        // sinon les champs garderaient les objectifs de l'ancien programme.
         <SettingsView
+            key={program.id}
             programLabel={program.label}
             programs={{ followed, catalog, today: todayISO() }}
             features={{

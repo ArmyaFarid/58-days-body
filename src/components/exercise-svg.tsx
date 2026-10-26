@@ -7,6 +7,8 @@ type Head = [number, number, number];
 interface Pose {
     head: Head;
     segments: Seg[];
+    /** Bande élastique (pointillés), qui suit la pose. */
+    band?: Seg[];
 }
 
 interface Drawing {
@@ -578,9 +580,79 @@ function Figure({ pose }: { pose: Pose }) {
             {pose.segments.map((s, i) => (
                 <line key={i} x1={s[0]} y1={s[1]} x2={s[2]} y2={s[3]} />
             ))}
+            {pose.band?.map((s, i) => (
+                <line
+                    key={`band-${i}`}
+                    x1={s[0]}
+                    y1={s[1]}
+                    x2={s[2]}
+                    y2={s[3]}
+                    strokeWidth={1.6}
+                    strokeDasharray="3 3"
+                    opacity={0.7}
+                />
+            ))}
         </g>
     );
 }
+
+/** Même dessin, avec la bande élastique ajoutée sur chaque pose. */
+function withBand(drawing: Drawing, bandA: Seg[], bandB: Seg[]): Drawing {
+    return { ...drawing, a: { ...drawing.a, band: bandA }, b: { ...drawing.b, band: bandB } };
+}
+
+// ─── Programme « fessiers-posture » (une bande 10 kg) ───
+// Clés propres au programme : on réutilise les poses existantes sans modifier
+// leurs entrées, et on ajoute la bande là où l'exercice l'utilise.
+Object.assign(DRAWINGS, {
+    "fpb-pont-2j": withBand(DRAWINGS["femme-pont-fessier-2j"], [[63, 77, 70, 77]], [[63, 77, 70, 77]]),
+    "fpb-pont-1j": DRAWINGS["femme-pont-fessier-1j"],
+    "fpb-fentes-arriere": DRAWINGS["femme-fentes-arriere"],
+    "fpb-squat-bande": withBand(DRAWINGS["femme-squat-tempo"], [[54, 80, 62, 80]], [[50, 86, 68, 78]]),
+    "fpb-abduction-couchee": withBand(
+        DRAWINGS["femme-abduction-hanche"],
+        [[72, 90, 72, 94]],
+        [[72, 84, 72, 92]],
+    ),
+    "fpb-fire-hydrants": withBand(DRAWINGS["femme-fire-hydrants"], [], [[72, 78, 79, 59]]),
+    "fpb-planche": DRAWINGS["femme-planche"],
+    "fpb-pompes-inclinees": DRAWINGS["femme-pompes-inclinees"],
+    "fpb-ecarte-bande": {
+        a: { ...DRAWINGS["femme-ecarte-bouteilles"].a, band: [[36, 96, 52, 96]] },
+        b: { ...DRAWINGS["femme-ecarte-bouteilles"].b, band: [[44, 78, 38, 92], [44, 78, 50, 92]] },
+    },
+    "fpb-tirage-assis": seatedBandRow,
+    "fpb-face-pull": DRAWINGS["face-pull"],
+    "fpb-elevations-laterales": {
+        a: { ...stand([[58, 39, 55, 62], [58, 39, 61, 62]]), band: [[49, 98, 55, 62]] },
+        b: { ...stand([[58, 39, 37, 39], [58, 39, 61, 62]]), band: [[49, 98, 37, 39]] },
+    },
+    "fpb-superman": DRAWINGS["femme-superman"],
+    "fpb-ouverture-poitrine": DRAWINGS["femme-ouverture-poitrine"],
+    "fpb-squat-bulgare": DRAWINGS["femme-squat-bulgare"],
+    "fpb-good-morning": {
+        // Bande des pieds aux épaules : elle suit le buste quand on se penche.
+        a: { ...DRAWINGS["good-morning"].a, band: [[52, 98, 54, 37], [64, 98, 62, 37]] },
+        b: { ...DRAWINGS["good-morning"].b, band: [[60, 98, 42, 46], [72, 98, 44, 48]] },
+    },
+    "fpb-monster-walk": {
+        // De face, en demi-squat : pas latéral en gardant la bande tendue.
+        equip: { segments: [[24, 98, 92, 98]] },
+        a: {
+            head: [58, 30, 7],
+            segments: [[58, 37, 58, 64], [58, 64, 52, 80], [52, 80, 52, 98], [58, 64, 64, 80], [64, 80, 64, 98], [58, 42, 50, 56], [58, 42, 66, 56]],
+            band: [[52, 78, 64, 78]],
+        },
+        b: {
+            head: [58, 30, 7],
+            segments: [[58, 37, 58, 64], [58, 64, 46, 80], [46, 80, 42, 98], [58, 64, 70, 80], [70, 80, 74, 98], [58, 42, 50, 56], [58, 42, 66, 56]],
+            band: [[46, 78, 70, 78]],
+        },
+    },
+    "fpb-curl-bande": DRAWINGS["curl-bande"],
+    "fpb-bird-dog": DRAWINGS["femme-bird-dog"],
+    "fpb-planche-laterale": DRAWINGS["femme-planche-laterale"],
+} satisfies Record<string, Drawing>);
 
 function Panel({
     x,

@@ -11,6 +11,7 @@ import {
     addUserProgram,
     setUserProgramStatus,
     setActiveProgramId,
+    getAbandonedProgramIds,
 } from "@/lib/data/user-programs";
 import { CATALOG } from "@/lib/program";
 import { getFoodPortions, getLoggedEntries, setFoodPortion } from "@/lib/data/nutrition";
@@ -296,25 +297,42 @@ export async function addProgramAction(programId: string, startDate: string) {
     const userId = await requireUserId();
     const id = programIdSchema.parse(programId);
     const date = isoDate.parse(startDate);
-    if (!CATALOG.some((p) => p.id === id)) throw new Error("Programme inconnu.");
+    const resumable = CATALOG.some((p) => p.id === id) || (await getAbandonedProgramIds(userId)).includes(id);
+    if (!resumable) throw new Error("Programme inconnu.");
     await addUserProgram(userId, id, date);
     await setActiveProgramId(userId, id);
     revalidatePath("/", "layout");
 }
 
+// Les refus sont renvoyés (pas levés) : Next masque le message des erreurs en prod.
 /** Met en pause ou réactive un programme. Les données sont toujours conservées. */
-export async function setProgramStatusAction(programId: string, paused: boolean) {
+export async function setProgramStatusAction(
+    programId: string,
+    paused: boolean,
+): Promise<{ error?: string }> {
     const userId = await requireUserId();
     const id = programIdSchema.parse(programId);
     const rows = await getUserPrograms(userId);
-    const target = rows.find((r) => r.programId === id);
-    if (!target) throw new Error("Programme non suivi.");
-    if (paused && !rows.some((r) => r.programId !== id && r.status === "active")) {
-        throw new Error("Garde au moins un programme actif.");
-    }
+    if (!rows.some((r) => r.programId === id)) return { error: "Programme non suivi." };
     await setUserProgramStatus(userId, id, paused ? "paused" : "active");
     if (!paused) await setActiveProgramId(userId, id);
     revalidatePath("/", "layout");
+    return {};
+}
+
+/**
+ * Abandonne un programme : il sort de « Mes programmes » et du sélecteur, et
+ * revient au catalogue. Ses séances et réglages restent en base. Sans aucun
+ * programme suivi, l'app propose d'en choisir un (onboarding).
+ */
+export async function abandonProgramAction(programId: string): Promise<{ error?: string }> {
+    const userId = await requireUserId();
+    const id = programIdSchema.parse(programId);
+    const rows = await getUserPrograms(userId);
+    if (!rows.some((r) => r.programId === id)) return { error: "Programme non suivi." };
+    await setUserProgramStatus(userId, id, "abandoned");
+    revalidatePath("/", "layout");
+    return {};
 }
 
 /** Supprime définitivement un compte invité (et toutes ses données). */
