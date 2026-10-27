@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WorkoutView } from "@/components/workout/workout-view";
-import { SeanceDateNav } from "@/components/workout/seance-date-nav";
 import type { ExerciseBlock, LoggedSet } from "@/components/workout/types";
 import { getSession as getAuthSession } from "@/lib/auth";
 import { getActiveProgram, scheduleContext } from "@/lib/data/user-programs";
@@ -20,8 +19,9 @@ import {
     sessionForDate,
 } from "@/lib/program";
 
+// Les jours à venir sont consultables en aperçu (rien n'est créé en base).
 function resolveDate(raw: string | undefined, today: string): string {
-    return raw && /^\d{4}-\d{2}-\d{2}$/.test(raw) && raw <= today ? raw : today;
+    return raw && /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : today;
 }
 
 export default async function SeancePage({
@@ -41,11 +41,12 @@ export default async function SeancePage({
     // Une séance passée s'affiche telle qu'elle était ce jour-là.
     const session = base ? sessionForDate(base, selectedDate) : base;
     const training = program.isTrainingDay(dayType, phase?.key ?? null);
+    const isFuture = selectedDate > today;
 
-    if (!training || !session || session.dayType === "repos") {
+    // Avant le début du programme : rien à faire, et surtout rien à créer en base.
+    if (ctx.dayNumber < 1 || !training || !session || session.dayType === "repos") {
         return (
             <div className="flex flex-col gap-4 p-4">
-                <SeanceDateNav today={today} selectedDate={selectedDate} />
                 <div className="flex flex-col items-center justify-center gap-4 rounded-xl border p-8 text-center">
                     <div className="bg-muted flex size-14 items-center justify-center rounded-full">
                         <Moon className="size-6" />
@@ -53,7 +54,9 @@ export default async function SeancePage({
                     <div>
                         <h1 className="text-xl font-semibold">Jour de repos</h1>
                         <p className="text-muted-foreground mt-1 text-sm">
-                            {dayType === "repos"
+                            {ctx.dayNumber < 1
+                                ? "Le programme n'a pas encore commencé ce jour-là."
+                                : dayType === "repos"
                                 ? "Jour off — pas de séance prévue ce jour-là."
                                 : "Pas de séance prévue ce jour-là en délestage."}
                         </p>
@@ -66,19 +69,21 @@ export default async function SeancePage({
         );
     }
 
-    const wSession = await getOrCreateSession(
-        userId,
-        program,
-        selectedDate,
-        dayType,
-        trainingPhase?.key ?? phase?.key ?? "libre",
-    );
-    const todayLogs = await getSetLogsForSession(wSession.id);
+    const wSession = isFuture
+        ? null
+        : await getOrCreateSession(
+              userId,
+              program,
+              selectedDate,
+              dayType,
+              trainingPhase?.key ?? phase?.key ?? "libre",
+          );
+    const todayLogs = wSession ? await getSetLogsForSession(wSession.id) : [];
 
     const blocks: ExerciseBlock[] = await Promise.all(
         session.exercises.map(async (ex) => {
             const lexicon = program.lexicon[ex.lexiconKey];
-            const last = await getLastPerformance(userId, program, ex.key, selectedDate);
+            const last = isFuture ? [] : await getLastPerformance(userId, program, ex.key, selectedDate);
 
             const todayForEx = todayLogs.filter((t) => t.exerciseKey === ex.key);
             const loggedMap: Record<number, LoggedSet> = {};
@@ -121,8 +126,8 @@ export default async function SeancePage({
         <WorkoutView
             today={today}
             selectedDate={selectedDate}
-            sessionId={wSession.id}
-            completed={wSession.completed}
+            sessionId={wSession?.id ?? null}
+            completed={wSession?.completed ?? false}
             title={session.title}
             focus={session.focus}
             phaseLabel={trainingPhase?.shortLabel ?? phase?.label ?? null}

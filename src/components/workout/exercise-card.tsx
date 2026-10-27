@@ -36,7 +36,8 @@ function guessBand(value: string | null | undefined, options: string[]): string 
 }
 
 interface ExerciseCardProps {
-    sessionId: number;
+    /** null : aperçu, sans saisie. */
+    sessionId: number | null;
     block: ExerciseBlock;
     showIntensification: boolean;
     unitLabel: string;
@@ -78,7 +79,7 @@ export function ExerciseCard({
                         {block.intensification}
                     </p>
                 ) : null}
-                {block.variantsEnabled ? (
+                {block.variantsEnabled && sessionId !== null ? (
                     <VariantSelector
                         sessionId={sessionId}
                         exerciseKey={block.key}
@@ -89,23 +90,25 @@ export function ExerciseCard({
                     />
                 ) : null}
             </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-                {Array.from({ length: block.setCount }).map((_, i) => (
-                    <SetRow
-                        key={i}
-                        sessionId={sessionId}
-                        exerciseKey={block.key}
-                        setIndex={i}
-                        label={`${unitLabel} ${i + 1}`}
-                        bandMode={block.bandMode}
-                        recommendedBand={block.band}
-                        variant={variant}
-                        logged={block.logged[i]}
-                        last={block.last[i]}
-                        onSaved={onSetSaved}
-                    />
-                ))}
-            </CardContent>
+            {sessionId !== null ? (
+                <CardContent className="flex flex-col gap-3">
+                    {Array.from({ length: block.setCount }).map((_, i) => (
+                        <SetRow
+                            key={i}
+                            sessionId={sessionId}
+                            exerciseKey={block.key}
+                            setIndex={i}
+                            label={`${unitLabel} ${i + 1}`}
+                            bandMode={block.bandMode}
+                            recommendedBand={block.band}
+                            variant={variant}
+                            logged={block.logged[i]}
+                            last={block.last[i]}
+                            onSaved={onSetSaved}
+                        />
+                    ))}
+                </CardContent>
+            ) : null}
         </Card>
     );
 }

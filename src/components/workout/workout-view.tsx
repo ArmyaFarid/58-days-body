@@ -2,19 +2,19 @@
 
 import { useCallback, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, Gauge, Loader2, Repeat, SkipForward } from "lucide-react";
+import { CheckCircle2, Eye, Gauge, Loader2, Repeat, SkipForward } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { completeSessionAction } from "@/lib/actions";
 import { ExerciseCard } from "./exercise-card";
 import { RestTimer, type RestState } from "./rest-timer";
-import { SeanceDateNav } from "./seance-date-nav";
 import type { ExerciseBlock } from "./types";
 
 interface WorkoutViewProps {
     today: string;
     selectedDate: string;
-    sessionId: number;
+    /** null : aperçu d'un jour à venir, rien n'est enregistrable. */
+    sessionId: number | null;
     completed: boolean;
     title: string;
     focus: string;
@@ -67,6 +67,7 @@ export function WorkoutView({
     }, [startRest]);
 
     function toggleComplete() {
+        if (sessionId === null) return;
         const next = !done;
         setDone(next);
         startTransition(async () => {
@@ -84,13 +85,12 @@ export function WorkoutView({
 
     return (
         <div className="flex flex-col gap-4 p-4">
-            <SeanceDateNav today={today} selectedDate={selectedDate} />
             <section>
                 <div className="flex items-center justify-between gap-2">
                     <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
                     {phaseLabel ? <Badge variant="secondary">{phaseLabel}</Badge> : null}
                 </div>
-                {selectedDate !== today ? (
+                {selectedDate < today ? (
                     <p className="text-primary text-xs font-medium">Séance d&apos;un jour passé</p>
                 ) : null}
                 <p className="text-muted-foreground text-sm">{focus}</p>
@@ -107,6 +107,13 @@ export function WorkoutView({
                     </p>
                 ) : null}
             </section>
+
+            {sessionId === null ? (
+                <p className="bg-primary/10 text-primary flex items-start gap-1.5 rounded-lg p-3 text-sm">
+                    <Eye className="mt-0.5 size-4 shrink-0" />
+                    Aperçu : tu pourras noter tes séries le jour venu.
+                </p>
+            ) : null}
 
             <div className="flex flex-col gap-3">
                 {exercises.map((block) => (
@@ -128,24 +135,28 @@ export function WorkoutView({
                 </p>
             ) : null}
 
-            <Button
-                onClick={toggleComplete}
-                disabled={pending}
-                variant={done ? "outline" : "default"}
-                className="h-12 text-base"
-            >
-                {pending ? (
-                    <Loader2 className="size-4 animate-spin" />
-                ) : (
-                    <CheckCircle2 className="size-5" />
-                )}
-                {done ? "Séance complétée — annuler" : "Marquer la séance comme complétée"}
-            </Button>
+            {sessionId !== null ? (
+                <>
+                    <Button
+                        onClick={toggleComplete}
+                        disabled={pending}
+                        variant={done ? "outline" : "default"}
+                        className="h-12 text-base"
+                    >
+                        {pending ? (
+                            <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                            <CheckCircle2 className="size-5" />
+                        )}
+                        {done ? "Séance complétée — annuler" : "Marquer la séance comme complétée"}
+                    </Button>
 
-            {/* Espace pour ne pas masquer le dernier bouton derrière le chrono. */}
-            <div className="h-14" />
+                    {/* Espace pour ne pas masquer le dernier bouton derrière le chrono. */}
+                    <div className="h-14" />
 
-            <RestTimer rest={rest} onStart={startRest} onStop={() => setRest(null)} onTick={onTick} />
+                    <RestTimer rest={rest} onStart={startRest} onStop={() => setRest(null)} onTick={onTick} />
+                </>
+            ) : null}
         </div>
     );
 }
