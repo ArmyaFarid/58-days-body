@@ -20,7 +20,12 @@ function getDb(): PostgresJsDatabase<typeof schema> {
         );
     }
 
-    const client = globalForDb.client ?? postgres(connectionString, { prepare: false });
+    const client = globalForDb.client ?? postgres(connectionString, {
+        prepare: false,
+        // Peu de connexions : à froid, chacune coûte une poignée de main TLS vers Neon.
+        max: 4,
+        idle_timeout: 20,
+    });
     globalForDb.client = client;
     globalForDb.drizzle = drizzle(client, { schema });
     return globalForDb.drizzle;

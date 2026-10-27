@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { settings, userPrograms, users } from "@/lib/db/schema";
@@ -107,8 +108,9 @@ export async function getUserPrograms(userId: number): Promise<UserProgram[]> {
  * Programme affiché : le dernier consulté s'il est actif, sinon le premier actif.
  * Tout en pause : le dernier consulté reste affiché (en pause). Aucun programme
  * suivi (tout abandonné, ou pas encore d'onboarding) : null.
+ * Mémorisé par requête : le layout et la page partagent le même résultat.
  */
-export async function getActiveProgram(userId: number): Promise<ActiveProgram | null> {
+export const getActiveProgram = cache(async (userId: number): Promise<ActiveProgram | null> => {
     const [all, [u]] = await Promise.all([
         getUserPrograms(userId),
         db
@@ -123,7 +125,7 @@ export async function getActiveProgram(userId: number): Promise<ActiveProgram | 
     const wanted = u?.active ?? getProgram(u?.origin).id;
     const row = pool.find((r) => r.programId === wanted) ?? pool[0];
     return { program: getProgram(row.programId), row, all };
-}
+});
 
 export function scheduleContext(row: UserProgram, date: string = todayISO()): ScheduleContext {
     return { dayNumber: getDayNumber(row.startDate, fromISO(date)), holdPhase1: row.holdPhase1 };

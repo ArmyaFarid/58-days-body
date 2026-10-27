@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
@@ -166,7 +167,8 @@ export async function destroySession(): Promise<void> {
     store.delete(COOKIE_NAME);
 }
 
-export async function getSession(): Promise<ActiveSession | null> {
+// Mémorisé par requête : le layout et la page lisent la session une seule fois.
+export const getSession = cache(async (): Promise<ActiveSession | null> => {
     const store = await cookies();
     const token = store.get(COOKIE_NAME)?.value;
     if (!token) return null;
@@ -186,7 +188,7 @@ export async function getSession(): Promise<ActiveSession | null> {
     } catch {
         return null;
     }
-}
+});
 
 /** Renvoie l'userId courant ou lève (pour les Server Actions). */
 export async function requireUserId(): Promise<number> {
