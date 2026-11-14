@@ -28,6 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                     <ThemeToggle />
                     <Button
                         render={<Link href="/parametres" />}
+                        nativeButton={false}
                         variant="ghost"
                         size="icon"
                         className="text-muted-foreground"
@@ -38,7 +39,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                     <LogoutButton />
                 </div>
             </header>
-            <main className="flex-1 pb-24">{children}</main>
+            <main className="flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))]">{children}</main>
             <AppNav />
         </div>
     );

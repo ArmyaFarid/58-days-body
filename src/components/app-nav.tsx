@@ -16,7 +16,7 @@ export function AppNav() {
     const pathname = usePathname();
 
     return (
-        <nav className="bg-background/95 fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur">
+        <nav className="bg-background/95 fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur">
             <div className="mx-auto flex max-w-xl items-stretch justify-around">
                 {ITEMS.map(({ href, label, icon: Icon }) => {
                     const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -25,7 +25,7 @@ export function AppNav() {
                             key={href}
                             href={href}
                             className={cn(
-                                "flex flex-1 flex-col items-center gap-1 py-2.5 text-[0.7rem] font-medium transition-colors",
+                                "flex flex-1 flex-col items-center gap-1 py-2.5 text-[0.7rem] font-medium transition-colors select-none [-webkit-touch-callout:none]",
                                 active ? "text-primary" : "text-muted-foreground",
                             )}
                         >

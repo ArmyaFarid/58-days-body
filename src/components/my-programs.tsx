@@ -106,8 +106,8 @@ export function MyPrograms({ followed, catalog, today }: MyProgramsProps) {
                         )}
                     >
                         <div className="flex items-start justify-between gap-2">
-                            <div>
-                                <p className="flex items-center gap-2 text-sm font-medium">
+                            <div className="min-w-0">
+                                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
                                     {p.label}
                                     {p.paused ? <Badge variant="outline">En pause</Badge> : null}
                                     {p.isCurrent ? <Badge variant="secondary">Affiché</Badge> : null}

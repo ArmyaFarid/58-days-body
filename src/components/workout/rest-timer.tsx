@@ -35,7 +35,7 @@ export function RestTimer({ rest, onStart, onStop, onTick }: RestTimerProps) {
     const progress = rest ? ((rest.total - rest.remaining) / rest.total) * 100 : 0;
 
     return (
-        <div className="fixed inset-x-0 bottom-16 z-40 mx-auto max-w-xl px-3">
+        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-xl px-3">
             <div className="bg-card relative overflow-hidden rounded-xl border shadow-lg">
                 {running ? (
                     <div
@@ -44,7 +44,7 @@ export function RestTimer({ rest, onStart, onStop, onTick }: RestTimerProps) {
                     />
                 ) : null}
                 <div className="relative flex items-center gap-2 p-2">
-                    <Timer className="text-muted-foreground ml-1 size-4 shrink-0" />
+                    <Timer className={cn("text-muted-foreground ml-1 size-4 shrink-0", running && "max-[379px]:hidden")} />
                     {running ? (
                         <span className="w-12 text-lg font-semibold tabular-nums">
                             {fmt(rest.remaining)}
@@ -52,14 +52,14 @@ export function RestTimer({ rest, onStart, onStop, onTick }: RestTimerProps) {
                     ) : (
                         <span className="text-muted-foreground text-sm">Repos</span>
                     )}
-                    <div className="ml-auto flex items-center gap-1">
+                    <div className="ml-auto flex shrink-0 items-center gap-1">
                         {PRESETS.map((s) => (
                             <button
                                 key={s}
                                 type="button"
                                 onClick={() => onStart(s)}
                                 className={cn(
-                                    "rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
+                                    "rounded-md px-1.5 py-1.5 text-sm font-medium transition-colors min-[380px]:px-2.5",
                                     running && rest.total === s
                                         ? "bg-primary text-primary-foreground"
                                         : "bg-muted hover:bg-muted/70",

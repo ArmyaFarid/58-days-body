@@ -654,6 +654,123 @@ Object.assign(DRAWINGS, {
     "fpb-planche-laterale": DRAWINGS["femme-planche-laterale"],
 } satisfies Record<string, Drawing>);
 
+// ─── Mode Internat (sol, bande, bord du lit) ───
+// Clés de lexique des substituts. Même principe : poses existantes réutilisées
+// telles quelles quand le mouvement est identique, nouvelles poses sinon.
+const FLOOR: Drawing["equip"] = { segments: [[6, 96, 104, 96]] };
+
+// Buste penché à 45°, debout sur la bande (rowing).
+const bentOver: Seg[] = [[45, 44, 64, 64], [64, 64, 56, 98], [64, 64, 72, 98]];
+const bandRow: Drawing = {
+    a: { head: [40, 40, 6], segments: [...bentOver, [49, 48, 49, 72]], band: [[60, 98, 49, 72]] },
+    b: {
+        head: [40, 40, 6],
+        segments: [...bentOver, [49, 48, 62, 46], [62, 46, 56, 62]],
+        band: [[60, 98, 56, 62]],
+    },
+};
+
+// Assis au sol, jambes tendues, bande autour des pieds.
+const seated: Seg[] = [[38, 50, 38, 78], [38, 78, 96, 82]];
+const seatedFacePull: Drawing = {
+    a: { head: [36, 44, 6], segments: [...seated, [42, 54, 86, 62]], band: [[96, 80, 86, 62]] },
+    b: {
+        head: [36, 44, 6],
+        segments: [...seated, [42, 54, 54, 50], [54, 50, 46, 40]],
+        band: [[96, 80, 46, 40]],
+    },
+};
+
+Object.assign(DRAWINGS, {
+    "int-pompes-declinees-lit": DRAWINGS["pompes-declinees"],
+    "int-pompes-pseudo-planche": DRAWINGS["pompes-pseudo-planche"],
+    "int-pompes-diamant": DRAWINGS["pompes-diamant"],
+    "int-tirage-assis": seatedBandRow,
+    "int-rowing-penche": bandRow,
+    "int-rowing-penche-pump": bandRow,
+    "int-face-pull-assis": seatedFacePull,
+    "int-fpb-face-pull-assis": seatedFacePull,
+    "int-pull-over-sol": {
+        // Allongé, bande sous le haut du dos : bras des oreilles vers les hanches.
+        equip: FLOOR,
+        a: {
+            head: [26, 88, 6],
+            segments: [[32, 90, 60, 90], [60, 90, 68, 78], [68, 78, 68, 96], [36, 90, 12, 84]],
+            band: [[38, 94, 12, 84]],
+        },
+        b: {
+            head: [26, 88, 6],
+            segments: [[32, 90, 60, 90], [60, 90, 68, 78], [68, 78, 68, 96], [36, 90, 56, 80]],
+            band: [[38, 94, 56, 80]],
+        },
+    },
+    "int-tenue-isometrique": {
+        // De profil, debout sur la bande : bras tendus, puis tenue coudes à 90°.
+        a: {
+            head: [58, 24, 7],
+            segments: [[58, 31, 58, 64], [58, 64, 52, 98], [58, 64, 64, 98], [58, 38, 58, 56], [58, 56, 60, 66]],
+            band: [[60, 98, 60, 66]],
+        },
+        b: {
+            head: [58, 24, 7],
+            segments: [[58, 31, 58, 64], [58, 64, 52, 98], [58, 64, 64, 98], [58, 38, 58, 56], [58, 56, 76, 54]],
+            band: [[60, 98, 76, 54]],
+        },
+    },
+    "int-squat-bulgare-lit": DRAWINGS["squat-bulgare"],
+    "int-fentes-arriere": DRAWINGS["femme-fentes-arriere"],
+    "int-mollets-sol": {
+        // Sans marche : talon au sol, puis sur la pointe, pause 2 s.
+        equip: { segments: [[36, 96, 80, 96]] },
+        a: {
+            head: [58, 26, 7],
+            segments: [[58, 33, 58, 66], [58, 66, 58, 96], [58, 66, 68, 80], [58, 96, 66, 96]],
+        },
+        b: {
+            head: [58, 20, 7],
+            segments: [[58, 27, 58, 60], [58, 60, 58, 90], [58, 60, 68, 74], [58, 90, 64, 96]],
+        },
+    },
+    "int-crunch-inverse": {
+        // Allongé : genoux à 90°, puis genoux vers la poitrine, bassin décollé.
+        equip: FLOOR,
+        a: {
+            head: [24, 88, 6],
+            segments: [[30, 90, 58, 90], [58, 90, 58, 70], [58, 70, 78, 70], [34, 92, 52, 94]],
+        },
+        b: {
+            head: [24, 88, 6],
+            segments: [[30, 90, 54, 84], [54, 84, 42, 66], [42, 66, 60, 58], [34, 92, 52, 94]],
+        },
+    },
+    "int-crunch-sol": DRAWINGS["femme-crunch"],
+    "int-fpb-pompes-lit": DRAWINGS["femme-pompes-inclinees"],
+    "int-fpb-pompes-genoux": {
+        equip: FLOOR,
+        a: {
+            head: [22, 74, 6],
+            segments: [[30, 76, 72, 94], [40, 78, 40, 96], [72, 94, 94, 96]],
+        },
+        b: {
+            head: [22, 88, 6],
+            segments: [[30, 90, 72, 95], [40, 92, 46, 82], [46, 82, 40, 94], [72, 95, 94, 96]],
+        },
+    },
+    "int-fpb-squat-bulgare-lit": DRAWINGS["femme-squat-bulgare"],
+    "int-fpb-fentes-arriere": DRAWINGS["femme-fentes-arriere"],
+    "int-fpb-etirement-poitrine": {
+        // De profil : bras le long du corps, puis mains jointes tendues derrière le dos.
+        a: {
+            head: [56, 24, 7],
+            segments: [[56, 31, 58, 64], [58, 64, 54, 98], [58, 64, 62, 98], [56, 38, 58, 62]],
+        },
+        b: {
+            head: [52, 24, 7],
+            segments: [[54, 31, 58, 64], [58, 64, 54, 98], [58, 64, 62, 98], [55, 38, 78, 58]],
+        },
+    },
+} satisfies Record<string, Drawing>);
+
 function Panel({
     x,
     label,

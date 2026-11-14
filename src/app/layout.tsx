@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { RegisterSW } from "@/components/register-sw";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeColorSync } from "@/components/theme-color-sync";
 
 const inter = Inter({
     variable: "--font-inter",
@@ -34,6 +35,8 @@ export const viewport: Viewport = {
     initialScale: 1,
     maximumScale: 1,
     userScalable: false,
+    // Contenu sous la barre d'accueil de l'iPhone : les marges `safe-area` la contournent.
+    viewportFit: "cover",
 };
 
 // Applique la taille d'affichage avant le premier paint (évite le flash).
@@ -54,6 +57,7 @@ export default function RootLayout({
                     enableSystem={false}
                     disableTransitionOnChange
                 >
+                    <ThemeColorSync />
                     {children}
                     <Toaster position="top-center" />
                 </ThemeProvider>

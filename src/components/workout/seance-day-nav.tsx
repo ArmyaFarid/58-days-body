@@ -139,11 +139,17 @@ export function SeanceDayNav({ today, days, children }: SeanceDayNavProps) {
                 </div>
 
                 <div className="mt-3 flex items-center justify-center gap-2 text-sm">
-                    <span className="text-muted-foreground first-letter:uppercase">
-                        {fmt(selected, { weekday: "long", day: "numeric", month: "long" })}
+                    {/* Date abrégée sur les petits écrans : le titre de la séance reste lisible. */}
+                    <span className="text-muted-foreground shrink-0 whitespace-nowrap first-letter:uppercase">
+                        <span className="min-[400px]:hidden">
+                            {fmt(selected, { weekday: "short", day: "numeric", month: "short" })}
+                        </span>
+                        <span className="hidden min-[400px]:inline">
+                            {fmt(selected, { weekday: "long", day: "numeric", month: "long" })}
+                        </span>
                     </span>
                     <span className="text-muted-foreground/50">·</span>
-                    <span className="truncate font-medium">{info?.title ?? "Hors programme"}</span>
+                    <span className="min-w-0 truncate font-medium">{info?.title ?? "Hors programme"}</span>
                     {status ? (
                         <span
                             className={cn(

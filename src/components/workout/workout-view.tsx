@@ -89,7 +89,7 @@ export function WorkoutView({
     return (
         <div className="flex flex-col gap-4 p-4">
             <section>
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
                     <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
                     {phaseLabel ? <Badge variant="secondary">{phaseLabel}</Badge> : null}
                 </div>
@@ -146,7 +146,7 @@ export function WorkoutView({
                         onClick={toggleComplete}
                         disabled={pending}
                         variant={done ? "outline" : "default"}
-                        className="h-12 text-base"
+                        className="h-auto min-h-12 py-2 text-base whitespace-normal"
                     >
                         {pending ? (
                             <Loader2 className="size-4 animate-spin" />

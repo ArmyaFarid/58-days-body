@@ -67,7 +67,7 @@ export default async function SeancePage({
                                 : "Pas de séance prévue ce jour-là en délestage."}
                         </p>
                     </div>
-                    <Button render={<Link href="/" />} variant="outline">
+                    <Button render={<Link href="/" />} nativeButton={false} variant="outline">
                         Retour à l&apos;accueil
                     </Button>
                 </div>

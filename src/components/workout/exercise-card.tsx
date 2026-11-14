@@ -55,12 +55,12 @@ export function ExerciseCard({
 
     return (
         <Card>
-            <CardHeader className="gap-1">
+            <CardHeader className="grid-cols-[minmax(0,1fr)] gap-1">
                 <div className="flex items-start justify-between gap-2">
-                    <div>
+                    <div className="min-w-0 wrap-break-word">
                         <p className="font-semibold leading-tight">{block.name}</p>
                         <p className="text-muted-foreground text-sm">
-                            Objectif : {block.sets} × {block.reps}
+                            Objectif : <span className="whitespace-nowrap">{block.sets} × {block.reps}</span>
                             {block.band ? ` · ${block.band}` : ""}
                         </p>
                     </div>
@@ -202,7 +202,7 @@ function VariantSelector({
 
     return (
         <div className="flex flex-col gap-1.5">
-            <span className="text-muted-foreground text-[11px] font-medium uppercase tracking-wide">
+            <span className="text-muted-foreground wrap-break-word text-[11px] font-medium uppercase tracking-wide">
                 Variante
                 {lastVariant ? (
                     <span className="ml-1 normal-case">· la dernière fois : {lastVariant}</span>
@@ -225,7 +225,7 @@ function VariantSelector({
                         type="button"
                         onClick={() => choose(o)}
                         className={cn(
-                            "rounded-md px-2.5 py-1.5 text-sm transition-colors",
+                            "max-w-full rounded-md px-2.5 py-1.5 text-left text-sm wrap-break-word transition-colors",
                             value === o ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70",
                         )}
                     >
@@ -340,45 +340,47 @@ function SetRow({
 
     return (
         <div className="border-border/60 flex flex-col gap-2 rounded-lg border p-2.5">
-            <div className="flex items-center gap-3">
-                <span className="text-muted-foreground w-12 shrink-0 text-xs font-medium">
-                    {label}
+            <div className="flex items-baseline justify-between gap-2">
+                <span className="text-muted-foreground shrink-0 text-xs font-medium">
+                    {label} · {isTime ? "secondes" : "reps"}
                 </span>
-                <div className="flex items-center gap-2">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="size-10"
-                        onClick={() => bump(-step)}
-                        aria-label="Moins"
-                    >
-                        <Minus className="size-4" />
-                    </Button>
-                    <Input
-                        type="number"
-                        inputMode="numeric"
-                        value={reps ?? ""}
-                        placeholder="0"
-                        onChange={(e) => {
-                            const v = e.target.value;
-                            setReps(v === "" ? null : Math.max(0, parseInt(v, 10) || 0));
-                            setSaved(false);
-                        }}
-                        className="h-10 w-14 px-1 text-center text-lg font-semibold"
-                    />
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className="size-10"
-                        onClick={() => bump(step)}
-                        aria-label="Plus"
-                    >
-                        <Plus className="size-4" />
-                    </Button>
-                    <span className="text-muted-foreground text-sm">{isTime ? "sec" : "reps"}</span>
-                </div>
+                {hint ? <span className="text-muted-foreground min-w-0 truncate text-[11px]">{hint}</span> : null}
+            </div>
+            {/* Toute la largeur disponible : rien ne déborde, même sur un petit écran ou en grande taille. */}
+            <div className="flex items-center gap-2">
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-10 shrink-0"
+                    onClick={() => bump(-step)}
+                    aria-label="Moins"
+                >
+                    <Minus className="size-4" />
+                </Button>
+                <Input
+                    type="number"
+                    inputMode="numeric"
+                    value={reps ?? ""}
+                    placeholder="0"
+                    onChange={(e) => {
+                        const v = e.target.value;
+                        setReps(v === "" ? null : Math.max(0, parseInt(v, 10) || 0));
+                        setSaved(false);
+                    }}
+                    aria-label={`${label} — ${isTime ? "secondes" : "répétitions"}`}
+                    className="h-10 max-w-28 min-w-0 flex-1 px-1 text-center text-lg font-semibold"
+                />
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-10 shrink-0"
+                    onClick={() => bump(step)}
+                    aria-label="Plus"
+                >
+                    <Plus className="size-4" />
+                </Button>
                 <Button
                     onClick={onSave}
                     disabled={pending}
@@ -419,7 +421,6 @@ function SetRow({
                 </div>
             ) : null}
 
-            {hint ? <span className="text-muted-foreground text-[11px]">{hint}</span> : null}
         </div>
     );
 }
@@ -436,9 +437,9 @@ function HowToDialog({ block }: { block: ExerciseBlock }) {
                     </Button>
                 }
             />
-            <DialogContent className="max-w-sm">
+            <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-sm overflow-y-auto overscroll-contain">
                 <DialogHeader>
-                    <DialogTitle>{block.lexiconName}</DialogTitle>
+                    <DialogTitle className="pr-8">{block.lexiconName}</DialogTitle>
                 </DialogHeader>
                 {hasExerciseSvg(block.lexiconKey) ? (
                     <div className="bg-muted rounded-lg p-2">
@@ -448,6 +449,7 @@ function HowToDialog({ block }: { block: ExerciseBlock }) {
                 <p className="text-sm leading-relaxed">{block.lexiconText}</p>
                 <Button
                     render={<a href={block.youtubeUrl} target="_blank" rel="noopener noreferrer" />}
+                    nativeButton={false}
                     variant="outline"
                     className="h-11"
                 >

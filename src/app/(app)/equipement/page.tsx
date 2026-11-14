@@ -10,6 +10,7 @@ export default function EquipementPage() {
             <div className="flex items-center gap-2 pt-2">
                 <Button
                     render={<Link href="/programme" />}
+                    nativeButton={false}
                     variant="ghost"
                     size="icon"
                     aria-label="Retour"

@@ -166,13 +166,13 @@ export default async function DashboardPage() {
                                     <CheckCircle2 className="size-4 shrink-0" />
                                     Séance complétée aujourd&apos;hui 💪
                                 </div>
-                                <Button render={<Link href="/seance" />} variant="outline" className="h-11">
+                                <Button render={<Link href="/seance" />} nativeButton={false} variant="outline" className="h-11">
                                     Revoir la séance
                                     <ChevronRight className="size-4" />
                                 </Button>
                             </>
                         ) : (
-                            <Button render={<Link href="/seance" />} className="h-11">
+                            <Button render={<Link href="/seance" />} nativeButton={false} className="h-11">
                                 Démarrer la séance
                                 <ChevronRight className="size-4" />
                             </Button>
@@ -367,7 +367,7 @@ export default async function DashboardPage() {
                     {trend.suggestionText ? (
                         <p className="bg-muted rounded-lg p-3 text-sm">{trend.suggestionText}</p>
                     ) : null}
-                    <Button render={<Link href="/suivi" />} variant="outline" className="h-10">
+                    <Button render={<Link href="/suivi" />} nativeButton={false} variant="outline" className="h-10">
                         Voir le suivi complet
                         <ChevronRight className="size-4" />
                     </Button>

@@ -139,3 +139,45 @@ html[data-size="moyen"] {
 html[data-size="gros"] {
   font-size: 20px;
 }
+
+/* ─── PWA : page fixe, rien ne bouge en dehors de ce qu'on fait défiler ─── */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Pas de rebond élastique ni de « pull to refresh » qui entraîne l'en-tête et la barre du bas. */
+  overscroll-behavior: none;
+  /* Bureau : la barre de défilement ne décale pas la mise en page en apparaissant. */
+  scrollbar-gutter: stable;
+}
+body {
+  /* Les animations de glissement ne créent jamais de défilement horizontal. */
+  overflow-x: clip;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Pas de zoom au double-tap ni de délai sur les commandes. */
+a,
+button,
+input,
+label,
+select,
+textarea,
+[role="button"],
+[role="switch"] {
+  touch-action: manipulation;
+}
+/* Un appui long sur un bouton ne sélectionne pas son texte. */
+button,
+[role="button"],
+[role="switch"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
