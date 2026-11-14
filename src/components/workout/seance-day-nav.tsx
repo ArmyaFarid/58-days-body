@@ -82,7 +82,7 @@ export function SeanceDayNav({ today, days, children }: SeanceDayNavProps) {
         selected > today ? "À venir" : info?.done ? "Faite" : selected === today ? "Aujourd'hui" : null;
 
     return (
-        <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="flex min-h-full flex-col">
+        <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="flex min-h-full touch-pan-y flex-col">
             <section className="bg-card mx-4 mt-4 rounded-2xl border p-3 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
                     <p className="font-semibold capitalize">{fmt(selected, { month: "long", year: "numeric" })}</p>

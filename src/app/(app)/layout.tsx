@@ -17,7 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     if (!active) redirect("/onboarding");
 
     return (
-        <div className="mx-auto flex min-h-full w-full max-w-xl flex-col">
+        <div className="mx-auto flex min-h-full w-full max-w-xl flex-col overflow-x-clip">
             {session.isImpersonating ? <ImpersonationBanner username={session.username} /> : null}
             <header className="bg-background/95 sticky top-0 z-30 flex items-center justify-between border-b px-4 py-2 backdrop-blur">
                 <span className="flex items-center gap-2 font-semibold">
