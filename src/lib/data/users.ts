@@ -47,6 +47,28 @@ export async function getUserProgramId(id: number): Promise<string | null> {
     return rows[0]?.programId ?? null;
 }
 
+export interface InternatPreference {
+    mode: boolean;
+    hasBed: boolean;
+}
+
+/** Réglage global du mode Internat. */
+export async function getInternatPreference(id: number): Promise<InternatPreference> {
+    const rows = await db
+        .select({ mode: users.internatMode, hasBed: users.internatHasBed })
+        .from(users)
+        .where(eq(users.id, id))
+        .limit(1);
+    return rows[0] ?? { mode: false, hasBed: true };
+}
+
+export async function setInternatPreference(id: number, patch: Partial<InternatPreference>): Promise<void> {
+    const set: Partial<typeof users.$inferInsert> = {};
+    if (patch.mode !== undefined) set.internatMode = patch.mode;
+    if (patch.hasBed !== undefined) set.internatHasBed = patch.hasBed;
+    if (Object.keys(set).length) await db.update(users).set(set).where(eq(users.id, id));
+}
+
 /**
  * Supprime un compte. Les données liées partent en cascade (voir schéma), sauf
  * la bibliothèque nutrition (aliments et repas) qui est partagée : on détache

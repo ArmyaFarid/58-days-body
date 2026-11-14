@@ -10,6 +10,7 @@ import {
     jsonb,
     unique,
 } from "drizzle-orm/pg-core";
+import type { InternatSessionState } from "@/lib/program/internat";
 
 export const users = pgTable("users", {
     id: serial("id").primaryKey(),
@@ -20,6 +21,10 @@ export const users = pgTable("users", {
     programId: text("program_id"),
     // Dernier programme consulté (sélecteur de l'accueil). NULL ⇒ programme d'origine.
     activeProgramId: text("active_program_id"),
+    // Mode « Internat » global : actif pour toutes les séances jusqu'à ce qu'on le coupe.
+    internatMode: boolean("internat_mode").default(false).notNull(),
+    // Lit ou rebord stable disponible (sinon, versions au sol des substituts).
+    internatHasBed: boolean("internat_has_bed").default(true).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -113,6 +118,9 @@ export const workoutSessions = pgTable(
         // Programme sous lequel la séance a été faite. NULL = séance antérieure
         // au multi-programme : rattachée à son programme via `day_type`.
         programId: text("program_id"),
+        // Mode « Internat » figé pour cette séance. NULL = rien de décidé : la
+        // séance suit le réglage global (aujourd'hui et après) ou le mode normal.
+        internat: jsonb("internat").$type<InternatSessionState>(),
     },
     (t) => [
         unique("workout_sessions_user_program_date")

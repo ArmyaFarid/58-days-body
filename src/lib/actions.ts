@@ -5,7 +5,7 @@ import { z } from "zod";
 import { requireUserId, changePassword, getSession, setActingUser } from "@/lib/auth";
 import { setStartDate, getNutritionGoals, updateSettings } from "@/lib/data/settings";
 import { createInviteCode, canActAs } from "@/lib/data/invite-codes";
-import { getUserById, deleteUser } from "@/lib/data/users";
+import { getUserById, deleteUser, getInternatPreference, setInternatPreference } from "@/lib/data/users";
 import {
     getUserPrograms,
     addUserProgram,
@@ -13,7 +13,19 @@ import {
     setActiveProgramId,
     getAbandonedProgramIds,
 } from "@/lib/data/user-programs";
-import { CATALOG } from "@/lib/program";
+import {
+    CATALOG,
+    PROGRAMME_58,
+    MASSE_FEMME,
+    FESSIERS_POSTURE,
+    getProgram,
+    sessionForDate,
+    applyInternat,
+    effectiveInternat,
+    substitutionsOf,
+    type InternatSessionState,
+} from "@/lib/program";
+import { todayISO } from "@/lib/date";
 import { getFoodPortions, getLoggedEntries, setFoodPortion } from "@/lib/data/nutrition";
 import {
     getCustomFoods,
@@ -37,7 +49,13 @@ import {
 } from "@/lib/nutrition";
 import { upsertWeight } from "@/lib/data/weight";
 import { setHabit, type HabitField } from "@/lib/data/habits";
-import { saveSetLog, setSessionCompleted, updateExerciseVariant } from "@/lib/data/workout";
+import {
+    saveSetLog,
+    setSessionCompleted,
+    updateExerciseVariant,
+    getOwnedSession,
+    setSessionInternat,
+} from "@/lib/data/workout";
 import { deletePhoto } from "@/lib/data/photos";
 import { upsertMeasurement } from "@/lib/data/measurements";
 import { resetAllData } from "@/lib/data/reset";
@@ -93,6 +111,7 @@ export async function saveSetLogAction(input: z.infer<typeof setLogSchema>) {
     const userId = await requireUserId();
     const parsed = setLogSchema.parse(input);
     await saveSetLog({ userId, ...parsed });
+    await freezeInternat(userId, parsed.sessionId);
     revalidatePath("/seance");
 }
 
@@ -115,8 +134,85 @@ export async function completeSessionAction(sessionId: number, completed: boolea
     const userId = await requireUserId();
     const id = z.number().int().positive().parse(sessionId);
     await setSessionCompleted(userId, id, Boolean(completed));
+    await freezeInternat(userId, id);
     revalidatePath("/seance");
     revalidatePath("/");
+}
+
+interface InternatPatch {
+    on?: boolean;
+    hasBed?: boolean;
+    revert?: { exerciseKey: string; reverted: boolean };
+}
+
+/**
+ * Fige le mode Internat sur une séance (première série, complétion) ou y
+ * applique un changement. Une séance déjà figée sans changement n'est pas
+ * réécrite : couper le réglage global ne modifie jamais une séance faite.
+ */
+async function freezeInternat(userId: number, sessionId: number, patch?: InternatPatch): Promise<boolean> {
+    const session = await getOwnedSession(userId, sessionId);
+    if (!session) return false;
+    if (session.internat && !patch) return true;
+    // Séance antérieure au multi-programme : programme retrouvé par le type de séance.
+    const program = session.programId
+        ? getProgram(session.programId)
+        : ([PROGRAMME_58, MASSE_FEMME, FESSIERS_POSTURE].find((p) => p.sessions[session.dayType]) ?? PROGRAMME_58);
+    const base = program.sessions[session.dayType];
+    const exercises = base ? sessionForDate(base, session.date).exercises : [];
+
+    const current = effectiveInternat(session.internat, session.date, todayISO(), await getInternatPreference(userId));
+    const reverted = new Set(current.reverted);
+    if (patch?.revert) {
+        if (patch.revert.reverted) reverted.add(patch.revert.exerciseKey);
+        else reverted.delete(patch.revert.exerciseKey);
+    }
+    const next: InternatSessionState = {
+        on: patch?.on ?? current.on,
+        hasBed: patch?.hasBed ?? current.hasBed,
+        reverted: [...reverted],
+        substitutions: {},
+    };
+    if (next.on) next.substitutions = substitutionsOf(applyInternat(program.id, exercises, next));
+    await setSessionInternat(userId, sessionId, next);
+    return true;
+}
+
+const sessionInternatSchema = z.object({
+    sessionId: z.number().int().positive(),
+    on: z.boolean().optional(),
+    hasBed: z.boolean().optional(),
+    revert: z.object({ exerciseKey: z.string().min(1).max(64), reverted: z.boolean() }).optional(),
+});
+
+/** Mode Internat pour cette séance seulement (bascule, lit, retour à l'original). */
+export async function setSessionInternatAction(
+    input: z.infer<typeof sessionInternatSchema>,
+): Promise<{ error?: string }> {
+    const userId = await requireUserId();
+    const { sessionId, ...patch } = sessionInternatSchema.parse(input);
+    if (!(await freezeInternat(userId, sessionId, patch))) return { error: "Séance introuvable." };
+    revalidatePath("/seance");
+    return {};
+}
+
+const internatModeSchema = z.object({
+    mode: z.boolean().optional(),
+    hasBed: z.boolean().optional(),
+    /** Séance en cours : reçoit aussi le changement (sinon, figée, elle le garderait). */
+    sessionId: z.number().int().positive().optional(),
+});
+
+/** Réglage global : actif pour toutes les séances jusqu'à ce qu'on le coupe. */
+export async function setInternatModeAction(
+    input: z.infer<typeof internatModeSchema>,
+): Promise<{ error?: string }> {
+    const userId = await requireUserId();
+    const { sessionId, ...patch } = internatModeSchema.parse(input);
+    await setInternatPreference(userId, patch);
+    if (sessionId) await freezeInternat(userId, sessionId, { on: patch.mode, hasBed: patch.hasBed });
+    revalidatePath("/", "layout");
+    return {};
 }
 
 export async function deletePhotoAction(id: number) {

@@ -30,4 +30,22 @@ export interface ExerciseBlock {
     variant: string | null;
     /** Variante de la dernière séance de cet exercice. */
     lastVariant: string | null;
+    /** Mode Internat : exercice remplaçable (null : aucun substitut). */
+    swap: {
+        originalKey: string;
+        originalName: string;
+        substituteName: string;
+        /** true : le substitut est affiché ; false : revenu à l'original. */
+        replaced: boolean;
+    } | null;
+}
+
+export interface InternatInfo {
+    /** La séance contient au moins un exercice remplaçable. */
+    available: boolean;
+    on: boolean;
+    hasBed: boolean;
+    /** Réglage global actif. */
+    global: boolean;
+    anchorNote: string;
 }

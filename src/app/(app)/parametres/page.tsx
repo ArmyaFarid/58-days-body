@@ -4,7 +4,8 @@ import { getSession } from "@/lib/auth";
 import { getSettingsView } from "@/lib/data/settings";
 import { getActiveProgram, getAbandonedProgramIds, scheduleContext } from "@/lib/data/user-programs";
 import { getInviteCodes, getInvitedUsers } from "@/lib/data/invite-codes";
-import { getProgram, CATALOG, type Program } from "@/lib/program";
+import { getInternatPreference } from "@/lib/data/users";
+import { getProgram, CATALOG, INTERNAT_ANCHOR_NOTE, type Program } from "@/lib/program";
 import type { UserProgram } from "@/lib/data/user-programs";
 import { todayISO, formatShort } from "@/lib/date";
 
@@ -19,12 +20,13 @@ function progressText(program: Program, row: UserProgram): string {
 export default async function ParametresPage() {
     const session = (await getSession())!;
     const userId = session.userId;
-    const [settings, active, abandonedIds, inviteCodes, invitedUsers] = await Promise.all([
+    const [settings, active, abandonedIds, inviteCodes, invitedUsers, internat] = await Promise.all([
         getSettingsView(userId),
         getActiveProgram(userId),
         getAbandonedProgramIds(userId),
         getInviteCodes(userId),
         getInvitedUsers(session.ownerUserId),
+        getInternatPreference(userId),
     ]);
     const { program, row, all } = active!;
 
@@ -72,6 +74,7 @@ export default async function ParametresPage() {
                 phase2: program.getPhase(9999)?.label ?? "Phase 2",
             }}
             settings={settings}
+            internat={{ ...internat, anchorNote: INTERNAT_ANCHOR_NOTE }}
             inviteCodes={inviteCodes.map((c) => ({ code: c.code, used: c.usedBy != null }))}
             accounts={{
                 users: invitedUsers,

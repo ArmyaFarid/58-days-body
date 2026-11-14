@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { completeSessionAction } from "@/lib/actions";
 import { ExerciseCard } from "./exercise-card";
+import { InternatBar } from "./internat-bar";
 import { RestTimer, type RestState } from "./rest-timer";
-import type { ExerciseBlock } from "./types";
+import type { ExerciseBlock, InternatInfo } from "./types";
 
 interface WorkoutViewProps {
     today: string;
@@ -25,6 +26,7 @@ interface WorkoutViewProps {
     finisher?: string;
     styleNote?: string;
     exercises: ExerciseBlock[];
+    internat: InternatInfo;
 }
 
 export function WorkoutView({
@@ -41,6 +43,7 @@ export function WorkoutView({
     finisher,
     styleNote,
     exercises,
+    internat,
 }: WorkoutViewProps) {
     const [rest, setRest] = useState<RestState | null>(null);
     const [done, setDone] = useState(completed);
@@ -107,6 +110,8 @@ export function WorkoutView({
                     </p>
                 ) : null}
             </section>
+
+            <InternatBar sessionId={sessionId} internat={internat} />
 
             {sessionId === null ? (
                 <p className="bg-primary/10 text-primary flex items-start gap-1.5 rounded-lg p-3 text-sm">

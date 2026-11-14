@@ -6,6 +6,7 @@ import { DEFAULT_PROTEIN_GOAL, DEFAULT_CALORIE_GOAL } from "@/lib/nutrition";
 import { MASSE_FEMME } from "./masse-femme";
 import { FESSIERS_POSTURE } from "./fessiers-posture";
 import { LEGACY_EXERCISES } from "./revisions";
+import { allInternatSubstitutes } from "./internat";
 
 export * from "./types";
 export { SESSIONS } from "./sessions";
@@ -14,6 +15,16 @@ export { MASSE_FEMME } from "./masse-femme";
 export { FESSIERS_POSTURE } from "./fessiers-posture";
 export { EXERCISE_VARIANTS, variantsFor } from "./variants";
 export { sessionForDate } from "./revisions";
+export {
+    INTERNAT_ANCHOR_NOTE,
+    INTERNAT_LEXICON,
+    applyInternat,
+    effectiveInternat,
+    hasInternatSubstitutes,
+    substitutionsOf,
+    type InternatSessionState,
+    type InternatSlot,
+} from "./internat";
 
 export const PROGRAM_LENGTH = 58;
 
@@ -294,6 +305,13 @@ const EXERCISE_NAME_MAP: Map<string, string> = (() => {
     }
     for (const ex of LEGACY_EXERCISES) {
         if (!map.has(ex.key)) map.set(ex.key, ex.name);
+    }
+    // Substituts du mode Internat : série distincte, avec la mention de l'original.
+    for (const { originalKey, exercises } of allInternatSubstitutes()) {
+        const original = map.get(originalKey) ?? originalKey;
+        for (const ex of exercises) {
+            if (!map.has(ex.key)) map.set(ex.key, `${ex.name} — substitut de ${original}`);
+        }
     }
     return map;
 })();

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { HelpCircle, Check, PlayCircle, Zap, Minus, Plus, TrendingUp } from "lucide-react";
+import { HelpCircle, Check, PlayCircle, Zap, Minus, Plus, TrendingUp, Repeat2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { saveSetLogAction, setExerciseVariantAction } from "@/lib/actions";
+import { saveSetLogAction, setExerciseVariantAction, setSessionInternatAction } from "@/lib/actions";
 import { ExerciseSvg, hasExerciseSvg } from "@/components/exercise-svg";
 import type { ExerciseBlock } from "./types";
 
@@ -66,6 +66,7 @@ export function ExerciseCard({
                     </div>
                     <HowToDialog block={block} />
                 </div>
+                {block.swap ? <SwapNotice sessionId={sessionId} swap={block.swap} /> : null}
                 {block.notes ? <p className="text-muted-foreground text-sm">{block.notes}</p> : null}
                 {block.progression ? (
                     <p className="text-muted-foreground flex items-start gap-1.5 text-xs">
@@ -110,6 +111,50 @@ export function ExerciseCard({
                 </CardContent>
             ) : null}
         </Card>
+    );
+}
+
+function SwapNotice({
+    sessionId,
+    swap,
+}: {
+    sessionId: number | null;
+    swap: NonNullable<ExerciseBlock["swap"]>;
+}) {
+    const [pending, startTransition] = useTransition();
+
+    function toggle() {
+        if (sessionId === null) return;
+        startTransition(async () => {
+            try {
+                const res = await setSessionInternatAction({
+                    sessionId,
+                    revert: { exerciseKey: swap.originalKey, reverted: swap.replaced },
+                });
+                if (res.error) toast.error(res.error);
+            } catch {
+                toast.error("Échec de la mise à jour.");
+            }
+        });
+    }
+
+    return (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="bg-primary/10 text-primary rounded-md px-2 py-0.5 text-xs">
+                {swap.replaced ? `Remplacé — original : ${swap.originalName}` : "Original conservé (mode Internat)"}
+            </span>
+            {sessionId !== null ? (
+                <button
+                    type="button"
+                    onClick={toggle}
+                    disabled={pending}
+                    className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs underline-offset-2 hover:underline disabled:opacity-50"
+                >
+                    <Repeat2 className="size-3.5" />
+                    {swap.replaced ? "Revenir à l'original" : `Reprendre le substitut (${swap.substituteName})`}
+                </button>
+            ) : null}
+        </div>
     );
 }
 

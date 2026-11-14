@@ -5,6 +5,7 @@ import { WorkoutView } from "@/components/workout/workout-view";
 import type { ExerciseBlock, LoggedSet } from "@/components/workout/types";
 import { getSession as getAuthSession } from "@/lib/auth";
 import { getActiveProgram, scheduleContext } from "@/lib/data/user-programs";
+import { getInternatPreference } from "@/lib/data/users";
 import {
     getOrCreateSession,
     getSetLogsForSession,
@@ -17,6 +18,11 @@ import {
     youtubeSearchUrl,
     variantsFor,
     sessionForDate,
+    applyInternat,
+    effectiveInternat,
+    hasInternatSubstitutes,
+    INTERNAT_ANCHOR_NOTE,
+    INTERNAT_LEXICON,
 } from "@/lib/program";
 
 // Les jours à venir sont consultables en aperçu (rien n'est créé en base).
@@ -80,9 +86,14 @@ export default async function SeancePage({
           );
     const todayLogs = wSession ? await getSetLogsForSession(wSession.id) : [];
 
+    // Mode Internat : état figé sur la séance, sinon réglage global (aujourd'hui et après).
+    const preference = await getInternatPreference(userId);
+    const internat = effectiveInternat(wSession?.internat ?? null, selectedDate, today, preference);
+    const slots = applyInternat(program.id, session.exercises, internat);
+
     const blocks: ExerciseBlock[] = await Promise.all(
-        session.exercises.map(async (ex) => {
-            const lexicon = program.lexicon[ex.lexiconKey];
+        slots.map(async ({ exercise: ex, swap }) => {
+            const lexicon = program.lexicon[ex.lexiconKey] ?? INTERNAT_LEXICON[ex.lexiconKey];
             const last = isFuture ? [] : await getLastPerformance(userId, program, ex.key, selectedDate);
 
             const todayForEx = todayLogs.filter((t) => t.exerciseKey === ex.key);
@@ -118,6 +129,14 @@ export default async function SeancePage({
                 variants: program.variants?.[ex.key] ?? variantsFor(ex.key),
                 variant: todayVariant,
                 lastVariant,
+                swap: swap
+                    ? {
+                          originalKey: swap.original.key,
+                          originalName: swap.original.name,
+                          substituteName: swap.substitute.name,
+                          replaced: swap.replaced,
+                      }
+                    : null,
             };
         }),
     );
@@ -137,6 +156,13 @@ export default async function SeancePage({
             finisher={session.finisher}
             styleNote={session.styleNote}
             exercises={blocks}
+            internat={{
+                available: hasInternatSubstitutes(program.id, session.exercises),
+                on: internat.on,
+                hasBed: internat.hasBed,
+                global: preference.mode,
+                anchorNote: INTERNAT_ANCHOR_NOTE,
+            }}
         />
     );
 }

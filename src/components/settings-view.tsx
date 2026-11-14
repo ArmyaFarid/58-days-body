@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2, KeyRound, TriangleAlert, Palette, Target, Ticket, Copy, Users, Dumbbell, Check } from "lucide-react";
+import { Loader2, KeyRound, TriangleAlert, Palette, Target, Ticket, Copy, Users, Dumbbell, Check, BedSingle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppearanceSettings } from "@/components/appearance-settings";
@@ -27,6 +27,7 @@ import {
     resetAllAction,
     setNutritionGoalsAction,
     generateInviteCodeAction,
+    setInternatModeAction,
 } from "@/lib/actions";
 
 const passwordSchema = z
@@ -76,6 +77,7 @@ interface SettingsViewProps {
     };
     inviteCodes: { code: string; used: boolean }[];
     accounts?: AccountsInfo;
+    internat: { mode: boolean; hasBed: boolean; anchorNote: string };
 }
 
 export function SettingsView({
@@ -86,6 +88,7 @@ export function SettingsView({
     settings,
     inviteCodes,
     accounts,
+    internat,
 }: SettingsViewProps) {
     const router = useRouter();
     const {
@@ -132,6 +135,23 @@ export function SettingsView({
         startOption(async () => {
             try {
                 await setNutritionGoalsAction(patch);
+                router.refresh();
+            } catch {
+                revert();
+                toast.error("Échec de l'enregistrement.");
+            }
+        });
+    }
+
+    // Mode Internat (réglage global, tous programmes).
+    const [internatMode, setInternatMode] = useState(internat.mode);
+    const [internatHasBed, setInternatHasBed] = useState(internat.hasBed);
+
+    function saveInternat(patch: { mode?: boolean; hasBed?: boolean }, revert: () => void) {
+        startOption(async () => {
+            try {
+                const res = await setInternatModeAction(patch);
+                if (res.error) throw new Error(res.error);
                 router.refresh();
             } catch {
                 revert();
@@ -261,6 +281,42 @@ export function SettingsView({
                         catalog={programs.catalog}
                         today={programs.today}
                     />
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                        <BedSingle className="size-4" />
+                        Mode Internat
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-2">
+                    <ToggleRow
+                        checked={internatMode}
+                        label="Mode Internat"
+                        hint="Sans mobilier : sol, bande et bord du lit. S'applique à toutes les séances jusqu'à ce que tu le coupes."
+                        onToggle={() => {
+                            const next = !internatMode;
+                            setInternatMode(next);
+                            saveInternat({ mode: next }, () => setInternatMode(!next));
+                        }}
+                    />
+                    {internatMode ? (
+                        <>
+                            <ToggleRow
+                                checked={internatHasBed}
+                                label="J'ai un lit ou un rebord stable"
+                                hint="Décoché : les exercices pieds ou mains sur le lit passent à leur version au sol."
+                                onToggle={() => {
+                                    const next = !internatHasBed;
+                                    setInternatHasBed(next);
+                                    saveInternat({ hasBed: next }, () => setInternatHasBed(!next));
+                                }}
+                            />
+                            <p className="text-muted-foreground text-xs">{internat.anchorNote}</p>
+                        </>
+                    ) : null}
                 </CardContent>
             </Card>
 

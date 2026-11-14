@@ -2,7 +2,7 @@ import "server-only";
 import { and, desc, eq, gte, inArray, isNull, lt, or, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { workoutSessions, setLogs } from "@/lib/db/schema";
-import { programDayTypes, type Program } from "@/lib/program";
+import { programDayTypes, type InternatSessionState, type Program } from "@/lib/program";
 
 /**
  * Séances d'un programme : celles enregistrées sous ce programme, plus les
@@ -31,6 +31,19 @@ export interface WorkoutSession {
     dayType: string;
     phase: string;
     completed: boolean;
+    /** Mode Internat figé sur la séance (null : rien de décidé). */
+    internat: InternatSessionState | null;
+}
+
+function toSession(r: typeof workoutSessions.$inferSelect): WorkoutSession {
+    return {
+        id: r.id,
+        date: r.date,
+        dayType: r.dayType,
+        phase: r.phase,
+        completed: r.completed,
+        internat: r.internat ?? null,
+    };
 }
 
 export async function getOrCreateSession(
@@ -47,16 +60,12 @@ export async function getOrCreateSession(
             and(eq(workoutSessions.userId, userId), eq(workoutSessions.date, date), programScope(program)),
         )
         .limit(1);
-    if (existing[0]) {
-        const r = existing[0];
-        return { id: r.id, date: r.date, dayType: r.dayType, phase: r.phase, completed: r.completed };
-    }
+    if (existing[0]) return toSession(existing[0]);
     const inserted = await db
         .insert(workoutSessions)
         .values({ userId, programId: program.id, date, dayType, phase })
         .returning();
-    const r = inserted[0];
-    return { id: r.id, date: r.date, dayType: r.dayType, phase: r.phase, completed: r.completed };
+    return toSession(inserted[0]);
 }
 
 /** Lecture seule : la séance du jour si elle existe déjà (sans la créer). */
@@ -72,9 +81,7 @@ export async function getSessionForDate(
             and(eq(workoutSessions.userId, userId), eq(workoutSessions.date, date), programScope(program)),
         )
         .limit(1);
-    const r = rows[0];
-    if (!r) return null;
-    return { id: r.id, date: r.date, dayType: r.dayType, phase: r.phase, completed: r.completed };
+    return rows[0] ? toSession(rows[0]) : null;
 }
 
 export async function getSetLogsForSession(sessionId: number): Promise<SetLog[]> {
@@ -191,6 +198,30 @@ export async function updateExerciseVariant(
         .update(setLogs)
         .set({ variant })
         .where(and(eq(setLogs.sessionId, sessionId), eq(setLogs.exerciseKey, exerciseKey)));
+}
+
+/** Séance d'un utilisateur par id, avec son programme (null : séance antérieure au multi-programme). */
+export async function getOwnedSession(
+    userId: number,
+    sessionId: number,
+): Promise<(WorkoutSession & { programId: string | null }) | null> {
+    const rows = await db
+        .select()
+        .from(workoutSessions)
+        .where(and(eq(workoutSessions.id, sessionId), eq(workoutSessions.userId, userId)))
+        .limit(1);
+    return rows[0] ? { ...toSession(rows[0]), programId: rows[0].programId } : null;
+}
+
+export async function setSessionInternat(
+    userId: number,
+    sessionId: number,
+    internat: InternatSessionState,
+): Promise<void> {
+    await db
+        .update(workoutSessions)
+        .set({ internat })
+        .where(and(eq(workoutSessions.id, sessionId), eq(workoutSessions.userId, userId)));
 }
 
 export async function setSessionCompleted(
