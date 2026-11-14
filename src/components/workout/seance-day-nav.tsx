@@ -117,11 +117,17 @@ export function SeanceDayNav({ today, days, children }: SeanceDayNavProps) {
                     <div
                         key={weekStart}
                         className={cn(
-                            "animate-in fade-in grid flex-1 grid-cols-7 gap-1 duration-300",
+                            "animate-in fade-in relative grid flex-1 grid-cols-7 gap-1 duration-300",
                             direction > 0 && "slide-in-from-right-4",
                             direction < 0 && "slide-in-from-left-4",
                         )}
                     >
+                        {/* Curseur unique qui glisse d'un jour à l'autre (largeur d'une colonne, gap-1 compris). */}
+                        <span
+                            aria-hidden
+                            className="bg-primary pointer-events-none absolute inset-y-0 left-0 w-[calc((100%-1.5rem)/7)] rounded-xl shadow-md transition-transform duration-300 ease-[cubic-bezier(0.34,1.4,0.64,1)] motion-reduce:transition-none"
+                            style={{ transform: `translateX(calc(${week.indexOf(selected)} * (100% + 0.25rem)))` }}
+                        />
                         {week.map((d) => (
                             <DayPill
                                 key={d}
@@ -207,8 +213,8 @@ function DayPill({ date, info, selected, isToday, onSelect }: DayPillProps) {
             aria-pressed={selected}
             aria-label={`${fmt(date, { weekday: "long", day: "numeric", month: "long" })} — ${info?.title ?? "hors programme"}`}
             className={cn(
-                "flex flex-col items-center gap-0.5 rounded-xl py-1.5 transition-all duration-200 active:scale-95",
-                selected ? "bg-primary text-primary-foreground scale-105 shadow-md" : "hover:bg-muted",
+                "relative flex flex-col items-center gap-0.5 rounded-xl py-1.5 transition-all duration-200 active:scale-95",
+                selected ? "text-primary-foreground" : "hover:bg-muted",
                 isToday && !selected && "ring-primary/60 ring-1",
                 !info && !selected && "opacity-40",
             )}
