@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { RegisterSW } from "@/components/register-sw";
@@ -8,6 +8,11 @@ import { ThemeColorSync } from "@/components/theme-color-sync";
 
 const inter = Inter({
     variable: "--font-inter",
+    subsets: ["latin"],
+});
+
+const spaceGrotesk = Space_Grotesk({
+    variable: "--font-space-grotesk",
     subsets: ["latin"],
 });
 
@@ -39,8 +44,8 @@ export const viewport: Viewport = {
     viewportFit: "cover",
 };
 
-// Applique la taille d'affichage avant le premier paint (évite le flash).
-const sizeScript = `(function(){try{var s=localStorage.getItem('ui-size');if(s&&s!=='normal')document.documentElement.setAttribute('data-size',s);}catch(e){}})();`;
+// Applique la taille d'affichage et la couleur du thème avant le premier paint (évite le flash).
+const sizeScript = `(function(){try{var d=document.documentElement;var s=localStorage.getItem('ui-size');if(s&&s!=='normal')d.setAttribute('data-size',s);var a=localStorage.getItem('ui-accent');if(a&&a!=='citron')d.setAttribute('data-accent',a);}catch(e){}})();`;
 
 export default function RootLayout({
     children,
@@ -48,12 +53,12 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="fr" suppressHydrationWarning className={`${inter.variable} h-full antialiased`}>
+        <html lang="fr" suppressHydrationWarning className={`${inter.variable} ${spaceGrotesk.variable} h-full antialiased`}>
             <body className="bg-background text-foreground flex min-h-full flex-col">
                 <script dangerouslySetInnerHTML={{ __html: sizeScript }} />
                 <ThemeProvider
                     attribute="class"
-                    defaultTheme="light"
+                    defaultTheme="dark"
                     enableSystem={false}
                     disableTransitionOnChange
                 >

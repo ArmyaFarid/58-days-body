@@ -19,16 +19,22 @@ export function ThemeColorSync() {
     const { resolvedTheme } = useTheme();
 
     useEffect(() => {
-        const hex = backgroundHex();
-        if (!hex) return;
-        let metas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
-        if (metas.length === 0) {
-            const meta = document.createElement("meta");
-            meta.name = "theme-color";
-            document.head.appendChild(meta);
-            metas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
-        }
-        metas.forEach((m) => m.setAttribute("content", hex));
+        const sync = () => {
+            const hex = backgroundHex();
+            if (!hex) return;
+            let metas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
+            if (metas.length === 0) {
+                const meta = document.createElement("meta");
+                meta.name = "theme-color";
+                document.head.appendChild(meta);
+                metas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
+            }
+            metas.forEach((m) => m.setAttribute("content", hex));
+        };
+        sync();
+        // Le fond sombre change légèrement avec la couleur choisie.
+        window.addEventListener("ui-accent-change", sync);
+        return () => window.removeEventListener("ui-accent-change", sync);
     }, [resolvedTheme]);
 
     return null;

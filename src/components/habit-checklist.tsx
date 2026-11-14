@@ -15,6 +15,28 @@ interface HabitChecklistProps {
     /** Affiche une ligne « Séance faite » (dérivée de la complétion du jour). */
     showSession?: boolean;
     sessionDone?: boolean;
+    /** Puces compactes (accueil) au lieu de lignes. */
+    compact?: boolean;
+}
+
+function Chip({ done, label, onClick }: { done: boolean; label: string; onClick?: () => void }) {
+    const className = cn(
+        "flex h-10 items-center gap-1 rounded-full px-3.5 text-[0.8125rem] font-semibold transition-colors",
+        done ? "bg-brand text-brand-foreground" : "text-foreground border",
+    );
+    const content = (
+        <>
+            {done ? <Check className="size-3.5" strokeWidth={3} /> : null}
+            {label}
+        </>
+    );
+    return onClick ? (
+        <button type="button" onClick={onClick} aria-pressed={done} className={className}>
+            {content}
+        </button>
+    ) : (
+        <span className={className}>{content}</span>
+    );
 }
 
 function AutoRow({ done, label, hint }: { done: boolean; label: string; hint: string }) {
@@ -45,6 +67,7 @@ export function HabitChecklist({
     meta,
     showSession = false,
     sessionDone = false,
+    compact = false,
 }: HabitChecklistProps) {
     const [state, setState] = useState(initial);
     const [, startTransition] = useTransition();
@@ -60,6 +83,32 @@ export function HabitChecklist({
                 toast.error("Échec de la mise à jour.");
             }
         });
+    }
+
+    if (compact) {
+        const total = meta.length + (showSession ? 1 : 0);
+        const doneCount = meta.filter(({ field }) => state[field]).length + (showSession && sessionDone ? 1 : 0);
+        return (
+            <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                    <span className="text-[0.9375rem] font-semibold">Habitudes</span>
+                    <span className="text-muted-foreground text-[0.8125rem] tabular-nums">
+                        {doneCount} / {total}
+                    </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {meta.map(({ field, label, auto }) => (
+                        <Chip
+                            key={field}
+                            done={state[field]}
+                            label={label}
+                            onClick={auto ? undefined : () => toggle(field)}
+                        />
+                    ))}
+                    {showSession ? <Chip done={sessionDone} label="Séance faite" /> : null}
+                </div>
+            </div>
+        );
     }
 
     return (

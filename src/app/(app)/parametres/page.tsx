@@ -1,4 +1,5 @@
 import { SettingsView } from "@/components/settings-view";
+import { LogoutButton } from "@/components/logout-button";
 import type { FollowedProgram } from "@/components/my-programs";
 import { getSession } from "@/lib/auth";
 import { getSettingsView } from "@/lib/data/settings";
@@ -43,46 +44,50 @@ export default async function ParametresPage() {
         };
     });
     // Catalogue + programmes abandonnés (reprenables même s'ils ont quitté le catalogue).
-    const offered = [
-        ...CATALOG,
-        ...abandonedIds.map((id) => getProgram(id)).filter((p) => !CATALOG.includes(p)),
-    ];
-    const catalog = offered.filter((p) => !all.some((r) => r.programId === p.id)).map((p) => ({
-        id: p.id,
-        label: p.label,
-        objective: p.objective,
-        equipment: p.equipment,
-        equipmentOptional: p.equipmentOptional,
-    }));
+    const offered = [...CATALOG, ...abandonedIds.map((id) => getProgram(id)).filter((p) => !CATALOG.includes(p))];
+    const catalog = offered
+        .filter((p) => !all.some((r) => r.programId === p.id))
+        .map((p) => ({
+            id: p.id,
+            label: p.label,
+            objective: p.objective,
+            equipment: p.equipment,
+            equipmentOptional: p.equipmentOptional,
+        }));
 
     return (
         // Remonte la vue quand le programme affiché change (pause, abandon, bascule) :
         // sinon les champs garderaient les objectifs de l'ancien programme.
-        <SettingsView
-            key={program.id}
-            programLabel={program.label}
-            programs={{ followed, catalog, today: todayISO() }}
-            features={{
-                trackFat: program.features.trackFat,
-                targetWeight: program.features.targetWeight,
-                multiPhase: program.nutritionPhase2Key != null,
-                holdPhase1: program.trainingPhase != null,
-                creatine: program.features.creatineOptional === true,
-            }}
-            phaseLabels={{
-                phase1: program.getPhase(1)?.label ?? "Phase 1",
-                phase2: program.getPhase(9999)?.label ?? "Phase 2",
-            }}
-            settings={settings}
-            internat={{ ...internat, anchorNote: INTERNAT_ANCHOR_NOTE }}
-            inviteCodes={inviteCodes.map((c) => ({ code: c.code, used: c.usedBy != null }))}
-            accounts={{
-                users: invitedUsers,
-                currentUserId: session.userId,
-                ownerUserId: session.ownerUserId,
-                ownerUsername: session.ownerUsername,
-                isImpersonating: session.isImpersonating,
-            }}
-        />
+        <>
+            <SettingsView
+                key={program.id}
+                programLabel={program.label}
+                programs={{ followed, catalog, today: todayISO() }}
+                features={{
+                    trackFat: program.features.trackFat,
+                    targetWeight: program.features.targetWeight,
+                    multiPhase: program.nutritionPhase2Key != null,
+                    holdPhase1: program.trainingPhase != null,
+                    creatine: program.features.creatineOptional === true,
+                }}
+                phaseLabels={{
+                    phase1: program.getPhase(1)?.label ?? "Phase 1",
+                    phase2: program.getPhase(9999)?.label ?? "Phase 2",
+                }}
+                settings={settings}
+                internat={{ ...internat, anchorNote: INTERNAT_ANCHOR_NOTE }}
+                inviteCodes={inviteCodes.map((c) => ({ code: c.code, used: c.usedBy != null }))}
+                accounts={{
+                    users: invitedUsers,
+                    currentUserId: session.userId,
+                    ownerUserId: session.ownerUserId,
+                    ownerUsername: session.ownerUsername,
+                    isImpersonating: session.isImpersonating,
+                }}
+            />
+            <div className="px-4 pb-4">
+                <LogoutButton />
+            </div>
+        </>
     );
 }

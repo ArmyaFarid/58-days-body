@@ -2,9 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { BedSingle, Loader2 } from "lucide-react";
+import { BedSingle, Check, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { setInternatModeAction, setSessionInternatAction } from "@/lib/actions";
 import type { InternatInfo } from "./types";
@@ -16,7 +18,7 @@ interface InternatBarProps {
 }
 
 export function InternatBar({ sessionId, internat }: InternatBarProps) {
-    const [choosing, setChoosing] = useState(false);
+    const [open, setOpen] = useState(false);
     const [pending, startTransition] = useTransition();
 
     function run(action: () => Promise<{ error?: string }>, success?: string) {
@@ -27,7 +29,6 @@ export function InternatBar({ sessionId, internat }: InternatBarProps) {
                     toast.error(res.error);
                     return;
                 }
-                setChoosing(false);
                 if (success) toast.success(success);
             } catch {
                 toast.error("Échec de la mise à jour.");
@@ -42,47 +43,34 @@ export function InternatBar({ sessionId, internat }: InternatBarProps) {
 
     if (!internat.available) return null;
 
-    if (!internat.on) {
-        return choosing ? (
-            <div className="flex flex-col gap-2 rounded-lg border p-3">
-                <p className="flex items-center gap-1.5 text-sm font-medium">
-                    <BedSingle className="size-4" />
-                    Activer le mode Internat
-                </p>
-                <div className="flex flex-wrap gap-2">
-                    {sessionId !== null ? (
-                        <Button size="sm" variant="outline" disabled={pending} onClick={() => forSession({ on: true })}>
-                            Pour cette séance
-                        </Button>
-                    ) : null}
-                    <Button
-                        size="sm"
-                        disabled={pending}
-                        onClick={() => forGood(true, "Mode Internat activé jusqu'à nouvel ordre.")}
-                    >
-                        Jusqu&apos;à ce que je le désactive
-                    </Button>
-                    <Button size="sm" variant="ghost" disabled={pending} onClick={() => setChoosing(false)}>
-                        Annuler
-                    </Button>
-                    {pending ? <Loader2 className="size-4 animate-spin self-center" /> : null}
-                </div>
-            </div>
-        ) : (
-            <Button variant="outline" size="sm" className="self-start" onClick={() => setChoosing(true)}>
-                <BedSingle className="size-4" />
-                Mode Internat
-            </Button>
-        );
-    }
-
-    return (
-        <div className="bg-primary/10 flex flex-col gap-2 rounded-lg p-3 text-sm">
-            <p className="text-primary flex items-center gap-1.5 font-medium">
-                <BedSingle className="size-4" />
-                Mode Internat {internat.global ? "actif" : "— cette séance"}
-                {pending ? <Loader2 className="size-3.5 animate-spin" /> : null}
+    const panel = !internat.on ? (
+        <div className="flex flex-col gap-3">
+            <p className="text-muted-foreground text-sm">
+                Remplace les exercices qui demandent du mobilier : sol, bande et bord du lit seulement.
             </p>
+            <div className="flex flex-col gap-2">
+                {sessionId !== null ? (
+                    <Button
+                        variant="outline"
+                        className="h-11"
+                        disabled={pending}
+                        onClick={() => forSession({ on: true })}
+                    >
+                        Pour cette séance
+                    </Button>
+                ) : null}
+                <Button
+                    className="h-11"
+                    disabled={pending}
+                    onClick={() => forGood(true, "Mode Internat activé jusqu'à nouvel ordre.")}
+                >
+                    Jusqu&apos;à ce que je le désactive
+                </Button>
+            </div>
+        </div>
+    ) : (
+        <div className="flex flex-col gap-3 text-sm">
+            <p className="text-primary font-medium">Mode Internat {internat.global ? "actif" : "— cette séance"}</p>
             <p className="text-muted-foreground text-xs">{internat.anchorNote}</p>
             <div className="flex items-center gap-2">
                 <Checkbox
@@ -95,20 +83,25 @@ export function InternatBar({ sessionId, internat }: InternatBarProps) {
                             : run(() => setInternatModeAction({ hasBed: checked }))
                     }
                 />
-                <Label htmlFor="internat-bed" className="text-xs font-normal">
+                <Label htmlFor="internat-bed" className="text-sm font-normal">
                     J&apos;ai un lit ou un rebord stable
                 </Label>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2">
                 {sessionId !== null ? (
-                    <Button size="sm" variant="outline" disabled={pending} onClick={() => forSession({ on: false })}>
+                    <Button
+                        variant="outline"
+                        className="h-11"
+                        disabled={pending}
+                        onClick={() => forSession({ on: false })}
+                    >
                         Désactiver pour cette séance
                     </Button>
                 ) : null}
                 {internat.global ? (
                     <Button
-                        size="sm"
                         variant="ghost"
+                        className="h-11"
                         disabled={pending}
                         onClick={() => forGood(false, "Mode Internat désactivé.")}
                     >
@@ -117,5 +110,34 @@ export function InternatBar({ sessionId, internat }: InternatBarProps) {
                 ) : null}
             </div>
         </div>
+    );
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger
+                render={
+                    <button
+                        type="button"
+                        className={cn(
+                            "flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold whitespace-nowrap",
+                            internat.on ? "border-brand bg-brand/15 text-primary" : "bg-card",
+                        )}
+                    >
+                        <BedSingle className="size-3.5" />
+                        Internat
+                        {internat.on ? <Check className="size-3.5" strokeWidth={3} /> : null}
+                    </button>
+                }
+            />
+            <DialogContent className="max-w-sm">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        Mode Internat
+                        {pending ? <Loader2 className="size-4 animate-spin" /> : null}
+                    </DialogTitle>
+                </DialogHeader>
+                {panel}
+            </DialogContent>
+        </Dialog>
     );
 }

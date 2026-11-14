@@ -52,6 +52,7 @@ import { setHabit, type HabitField } from "@/lib/data/habits";
 import {
     saveSetLog,
     setSessionCompleted,
+    setSessionFeeling,
     updateExerciseVariant,
     getOwnedSession,
     setSessionInternat,
@@ -128,6 +129,18 @@ export async function setExerciseVariantAction(input: z.infer<typeof variantSche
     await updateExerciseVariant(userId, sessionId, exerciseKey, clean);
     revalidatePath("/seance");
     revalidatePath("/suivi");
+}
+
+const feelingSchema = z.object({
+    sessionId: z.number().int().positive(),
+    feeling: z.enum(["facile", "juste", "dur"]).nullable(),
+});
+
+export async function setSessionFeelingAction(input: z.infer<typeof feelingSchema>) {
+    const userId = await requireUserId();
+    const { sessionId, feeling } = feelingSchema.parse(input);
+    await setSessionFeeling(userId, sessionId, feeling);
+    revalidatePath("/seance");
 }
 
 export async function completeSessionAction(sessionId: number, completed: boolean) {

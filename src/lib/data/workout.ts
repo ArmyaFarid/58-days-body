@@ -33,6 +33,7 @@ export interface WorkoutSession {
     completed: boolean;
     /** Mode Internat figé sur la séance (null : rien de décidé). */
     internat: InternatSessionState | null;
+    feeling: SessionFeeling | null;
 }
 
 function toSession(r: typeof workoutSessions.$inferSelect): WorkoutSession {
@@ -43,6 +44,7 @@ function toSession(r: typeof workoutSessions.$inferSelect): WorkoutSession {
         phase: r.phase,
         completed: r.completed,
         internat: r.internat ?? null,
+        feeling: (r.feeling as SessionFeeling | null) ?? null,
     };
 }
 
@@ -232,6 +234,19 @@ export async function setSessionCompleted(
     await db
         .update(workoutSessions)
         .set({ completed, completedAt: completed ? new Date() : null })
+        .where(and(eq(workoutSessions.id, sessionId), eq(workoutSessions.userId, userId)));
+}
+
+export type SessionFeeling = "facile" | "juste" | "dur";
+
+export async function setSessionFeeling(
+    userId: number,
+    sessionId: number,
+    feeling: SessionFeeling | null,
+): Promise<void> {
+    await db
+        .update(workoutSessions)
+        .set({ feeling })
         .where(and(eq(workoutSessions.id, sessionId), eq(workoutSessions.userId, userId)));
 }
 

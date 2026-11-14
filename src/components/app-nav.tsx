@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Dumbbell, TrendingUp, BookOpen } from "lucide-react";
+import { Home, TrendingUp, BookOpen } from "lucide-react";
+import { DumbbellIcon } from "@/components/dumbbell-icon";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
     { href: "/", label: "Accueil", icon: Home },
-    { href: "/seance", label: "Séance", icon: Dumbbell },
+    { href: "/seance", label: "Séance", icon: DumbbellIcon },
     { href: "/suivi", label: "Suivi", icon: TrendingUp },
     { href: "/programme", label: "Programme", icon: BookOpen },
 ];
@@ -16,8 +17,8 @@ export function AppNav() {
     const pathname = usePathname();
 
     return (
-        <nav className="bg-background/95 fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur">
-            <div className="mx-auto flex max-w-xl items-stretch justify-around">
+        <nav className="from-background fixed inset-x-0 bottom-0 z-40 bg-linear-to-t from-50% to-transparent px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            <div className="bg-nav mx-auto flex h-[4.25rem] max-w-xl items-center justify-around rounded-3xl border">
                 {ITEMS.map(({ href, label, icon: Icon }) => {
                     const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
                     return (
@@ -25,11 +26,11 @@ export function AppNav() {
                             key={href}
                             href={href}
                             className={cn(
-                                "flex flex-1 flex-col items-center gap-1 py-2.5 text-[0.7rem] font-medium transition-colors select-none [-webkit-touch-callout:none]",
+                                "flex min-w-16 flex-col items-center justify-center gap-1 text-[0.6875rem] font-semibold transition-colors select-none [-webkit-touch-callout:none]",
                                 active ? "text-primary" : "text-muted-foreground",
                             )}
                         >
-                            <Icon className={cn("size-6", active && "stroke-[2.5]")} />
+                            <Icon className="size-6" strokeWidth={active ? 2.4 : 2} />
                             {label}
                         </Link>
                     );

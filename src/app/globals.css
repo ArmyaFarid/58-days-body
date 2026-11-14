@@ -9,7 +9,11 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-space-grotesk);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-streak: var(--streak);
+  --color-nav: var(--nav);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -55,8 +59,16 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  /* Thème de couleur (data-accent sur <html>) : Citron par défaut.
+     --brand : couleur vive (aplats, texte foncé dessus) ;
+     --brand-ink : même teinte assombrie, lisible en texte sur fond clair. */
+  --brand: #c6f432;
+  --brand-foreground: #0e0f12;
+  --brand-ink: #4a7300;
+  --streak: #ff8a3d;
+  --nav: #ffffff;
+  --primary: var(--brand-ink);
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -66,13 +78,13 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: var(--brand-ink);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.75rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -83,25 +95,42 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+html[data-accent="rose"] {
+  --brand: #ff6fb5;
+  --brand-ink: #b8115e;
+  --streak: #ffc24d;
+}
+html[data-accent="bleu"] {
+  --brand: #5ec8ff;
+  --brand-ink: #0b6aa8;
+  --streak: #ff9a4d;
+}
+html[data-accent="orange"] {
+  --brand: #ff8a3d;
+  --brand-ink: #b04a06;
+  --streak: #ffd84d;
+}
+
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --nav: #1b1e24;
+  --background: #0e0f12;
+  --foreground: #f4f5f7;
+  --card: #17191e;
+  --card-foreground: #f4f5f7;
+  --popover: #17191e;
+  --popover-foreground: #f4f5f7;
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-foreground);
+  --secondary: #20232a;
+  --secondary-foreground: #f4f5f7;
+  --muted: #20232a;
+  --muted-foreground: #9aa0aa;
+  --accent: #20232a;
+  --accent-foreground: #f4f5f7;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --border: #2a2e36;
+  --input: #2a2e36;
+  --ring: var(--brand);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -115,6 +144,40 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+/* Fond sombre légèrement teinté par le thème choisi. */
+html.dark[data-accent="rose"] {
+  --nav: #211a1f;
+  --background: #110d10;
+  --card: #1c161a;
+  --popover: #1c161a;
+  --muted: #251d22;
+  --secondary: #251d22;
+  --accent: #251d22;
+  --border: #33282f;
+  --input: #33282f;
+}
+html.dark[data-accent="bleu"] {
+  --nav: #181e27;
+  --background: #0b0e13;
+  --card: #141921;
+  --popover: #141921;
+  --muted: #1c222c;
+  --secondary: #1c222c;
+  --accent: #1c222c;
+  --border: #252d39;
+  --input: #252d39;
+}
+html.dark[data-accent="orange"] {
+  --nav: #221c17;
+  --background: #110e0c;
+  --card: #1d1814;
+  --popover: #1d1814;
+  --muted: #26201b;
+  --secondary: #26201b;
+  --accent: #26201b;
+  --border: #342b24;
+  --input: #342b24;
 }
 
 @layer base {

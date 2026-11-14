@@ -121,6 +121,8 @@ export const workoutSessions = pgTable(
         // Mode « Internat » figé pour cette séance. NULL = rien de décidé : la
         // séance suit le réglage global (aujourd'hui et après) ou le mode normal.
         internat: jsonb("internat").$type<InternatSessionState>(),
+        // Ressenti noté à la fin de la séance : "facile" | "juste" | "dur". NULL = pas noté.
+        feeling: text("feeling"),
     },
     (t) => [
         unique("workout_sessions_user_program_date")

@@ -1,9 +1,9 @@
 "use client";
 
-import { useOptimistic, useRef, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { addDays, format, startOfWeek } from "date-fns";
-import { CalendarDays, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fromISO } from "@/lib/date";
 
@@ -30,11 +30,13 @@ function fmt(date: string, options: Intl.DateTimeFormatOptions): string {
 }
 
 function isSwipeIgnored(target: EventTarget | null): boolean {
-    return target instanceof Element && target.closest("input, textarea, select, [role=dialog], [data-no-swipe]") != null;
+    return (
+        target instanceof Element && target.closest("input, textarea, select, [role=dialog], [data-no-swipe]") != null
+    );
 }
 
-// Navigation entre les jours de /seance : bandeau de la semaine, flèches,
-// calendrier natif et balayage gauche/droite sur toute la page.
+// Navigation entre les jours de /seance : bandeau des semaines (défilement
+// horizontal, une semaine à la fois) et balayage gauche/droite sur toute la page.
 export function SeanceDayNav({ today, days, children }: SeanceDayNavProps) {
     const router = useRouter();
     const raw = useSearchParams().get("date");
@@ -76,98 +78,64 @@ export function SeanceDayNav({ today, days, children }: SeanceDayNavProps) {
     }
 
     const weekStart = format(startOfWeek(fromISO(selected), { weekStartsOn: 1 }), "yyyy-MM-dd");
-    const week = Array.from({ length: 7 }, (_, i) => shiftISO(weekStart, i));
-    const info = days[selected];
-    const status =
-        selected > today ? "À venir" : info?.done ? "Faite" : selected === today ? "Aujourd'hui" : null;
+
+    // Toutes les semaines couvertes par le programme (et celle du jour choisi).
+    const known = [...Object.keys(days), today, selected].sort();
+    const firstWeek = format(startOfWeek(fromISO(known[0]), { weekStartsOn: 1 }), "yyyy-MM-dd");
+    const weeks: string[] = [];
+    for (let w = firstWeek; w <= known[known.length - 1]; w = shiftISO(w, 7)) weeks.push(w);
+
+    // Amène la semaine du jour choisi à l'écran (sans animation au premier affichage).
+    const scroller = useRef<HTMLDivElement>(null);
+    const placed = useRef(false);
+    useLayoutEffect(() => {
+        const el = scroller.current?.querySelector<HTMLElement>(`[data-week="${weekStart}"]`);
+        if (!scroller.current || !el) return;
+        scroller.current.scrollTo({ left: el.offsetLeft, behavior: placed.current ? "smooth" : "instant" });
+        placed.current = true;
+    }, [weekStart]);
+
+    // Molette verticale (souris) : passe d'une semaine à l'autre.
+    useEffect(() => {
+        const el = scroller.current;
+        if (!el) return;
+        let last = 0;
+        const onWheel = (e: WheelEvent) => {
+            if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+            e.preventDefault();
+            const now = Date.now();
+            if (now - last < 350 || Math.abs(e.deltaY) < 4) return;
+            last = now;
+            el.scrollBy({ left: Math.sign(e.deltaY) * el.clientWidth, behavior: "smooth" });
+        };
+        el.addEventListener("wheel", onWheel, { passive: false });
+        return () => el.removeEventListener("wheel", onWheel);
+    }, []);
 
     return (
         <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="flex min-h-full touch-pan-y flex-col">
-            <section className="bg-card mx-4 mt-4 rounded-2xl border p-3 shadow-sm">
-                <div className="flex items-center justify-between gap-2">
-                    <p className="font-semibold capitalize">{fmt(selected, { month: "long", year: "numeric" })}</p>
-                    <div className="flex items-center gap-1">
-                        {selected !== today ? (
-                            <button
-                                type="button"
-                                onClick={() => go(today)}
-                                className="bg-primary/10 text-primary rounded-full px-3 py-1 text-xs font-medium transition-colors active:bg-primary/20"
-                            >
-                                Aujourd&apos;hui
-                            </button>
-                        ) : null}
-                        {/* Le champ date transparent couvre l'icône : ouvre le calendrier natif. */}
-                        <label className="text-muted-foreground hover:bg-muted relative flex size-9 items-center justify-center rounded-full transition-colors">
-                            <CalendarDays className="size-5" />
-                            <span className="sr-only">Choisir un jour</span>
-                            <input
-                                type="date"
-                                value={selected}
-                                onChange={(e) => go(e.target.value)}
-                                className="absolute inset-0 cursor-pointer opacity-0"
-                            />
-                        </label>
-                    </div>
+            <div className="px-5 pt-4">
+                <div
+                    ref={scroller}
+                    data-no-swipe
+                    className="relative flex snap-x snap-mandatory gap-1.5 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                    {weeks.map((w) => (
+                        <div key={w} data-week={w} className="grid w-full shrink-0 snap-start grid-cols-7 gap-1.5">
+                            {Array.from({ length: 7 }, (_, i) => shiftISO(w, i)).map((d) => (
+                                <DayPill
+                                    key={d}
+                                    date={d}
+                                    info={days[d]}
+                                    selected={d === selected}
+                                    isToday={d === today}
+                                    onSelect={() => go(d)}
+                                />
+                            ))}
+                        </div>
+                    ))}
                 </div>
-
-                <div className="mt-2 flex items-center gap-1">
-                    <DayArrow label="Jour précédent" onClick={() => go(shiftISO(selected, -1))}>
-                        <ChevronLeft className="size-5" />
-                    </DayArrow>
-                    <div
-                        key={weekStart}
-                        className={cn(
-                            "animate-in fade-in relative grid flex-1 grid-cols-7 gap-1 duration-300",
-                            direction > 0 && "slide-in-from-right-4",
-                            direction < 0 && "slide-in-from-left-4",
-                        )}
-                    >
-                        {/* Curseur unique qui glisse d'un jour à l'autre (largeur d'une colonne, gap-1 compris). */}
-                        <span
-                            aria-hidden
-                            className="bg-primary pointer-events-none absolute inset-y-0 left-0 w-[calc((100%-1.5rem)/7)] rounded-xl shadow-md transition-transform duration-300 ease-[cubic-bezier(0.34,1.4,0.64,1)] motion-reduce:transition-none"
-                            style={{ transform: `translateX(calc(${week.indexOf(selected)} * (100% + 0.25rem)))` }}
-                        />
-                        {week.map((d) => (
-                            <DayPill
-                                key={d}
-                                date={d}
-                                info={days[d]}
-                                selected={d === selected}
-                                isToday={d === today}
-                                onSelect={() => go(d)}
-                            />
-                        ))}
-                    </div>
-                    <DayArrow label="Jour suivant" onClick={() => go(shiftISO(selected, 1))}>
-                        <ChevronRight className="size-5" />
-                    </DayArrow>
-                </div>
-
-                <div className="mt-3 flex items-center justify-center gap-2 text-sm">
-                    {/* Date abrégée sur les petits écrans : le titre de la séance reste lisible. */}
-                    <span className="text-muted-foreground shrink-0 whitespace-nowrap first-letter:uppercase">
-                        <span className="min-[400px]:hidden">
-                            {fmt(selected, { weekday: "short", day: "numeric", month: "short" })}
-                        </span>
-                        <span className="hidden min-[400px]:inline">
-                            {fmt(selected, { weekday: "long", day: "numeric", month: "long" })}
-                        </span>
-                    </span>
-                    <span className="text-muted-foreground/50">·</span>
-                    <span className="min-w-0 truncate font-medium">{info?.title ?? "Hors programme"}</span>
-                    {status ? (
-                        <span
-                            className={cn(
-                                "shrink-0 rounded-full px-2 py-0.5 text-[0.7rem] font-medium",
-                                info?.done ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
-                            )}
-                        >
-                            {status}
-                        </span>
-                    ) : null}
-                </div>
-            </section>
+            </div>
 
             <div
                 key={date}
@@ -184,19 +152,6 @@ export function SeanceDayNav({ today, days, children }: SeanceDayNavProps) {
     );
 }
 
-function DayArrow({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            aria-label={label}
-            className="text-muted-foreground hover:bg-muted flex size-8 shrink-0 items-center justify-center rounded-full transition-colors active:scale-90"
-        >
-            {children}
-        </button>
-    );
-}
-
 interface DayPillProps {
     date: string;
     info: DayInfo | undefined;
@@ -206,28 +161,39 @@ interface DayPillProps {
 }
 
 function DayPill({ date, info, selected, isToday, onSelect }: DayPillProps) {
+    const rest = info != null && !info.training;
     return (
         <button
             type="button"
             onClick={onSelect}
             aria-pressed={selected}
-            aria-label={`${fmt(date, { weekday: "long", day: "numeric", month: "long" })} — ${info?.title ?? "hors programme"}`}
+            aria-label={`${fmt(date, { weekday: "long", day: "numeric", month: "long" })} — ${
+                info ? (info.done ? `${info.title}, faite` : info.title) : "hors programme"
+            }`}
             className={cn(
-                "relative flex flex-col items-center gap-0.5 rounded-xl py-1.5 transition-all duration-200 active:scale-95",
-                selected ? "text-primary-foreground" : "hover:bg-muted",
-                isToday && !selected && "ring-primary/60 ring-1",
+                "flex h-16 flex-col items-center justify-center gap-px rounded-[0.875rem] transition-colors duration-200 active:scale-95",
+                selected ? "bg-brand text-brand-foreground" : "bg-card",
+                isToday && !selected && "ring-brand/70 ring-1 ring-inset",
+                rest && !selected && "text-muted-foreground",
                 !info && !selected && "opacity-40",
             )}
         >
-            <span className={cn("text-[0.65rem] font-medium uppercase", selected ? "opacity-80" : "text-muted-foreground")}>
+            <span className="text-[0.6875rem] font-semibold uppercase opacity-80">
                 {fmt(date, { weekday: "narrow" })}
             </span>
-            <span className="text-base font-semibold tabular-nums leading-none">{fromISO(date).getDate()}</span>
+            <span className="font-heading text-[1.0625rem] leading-tight font-bold tabular-nums">
+                {fromISO(date).getDate()}
+            </span>
             <span className="flex h-3 items-center">
                 {info?.done ? (
-                    <Check className={cn("size-3 stroke-[3]", selected ? "" : "text-primary")} />
+                    <Check className={cn("size-3", selected ? "" : "text-brand")} strokeWidth={3.5} />
                 ) : info?.training ? (
-                    <span className={cn("size-1.5 rounded-full", selected ? "bg-primary-foreground" : "bg-primary")} />
+                    <span
+                        className={cn(
+                            "size-[5px] rounded-full",
+                            selected ? "bg-brand-foreground" : "bg-muted-foreground",
+                        )}
+                    />
                 ) : null}
             </span>
         </button>

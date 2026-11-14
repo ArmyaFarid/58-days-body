@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Moon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { WorkoutView } from "@/components/workout/workout-view";
 import type { ExerciseBlock, LoggedSet } from "@/components/workout/types";
 import { getSession as getAuthSession } from "@/lib/auth";
@@ -10,7 +9,9 @@ import {
     getOrCreateSession,
     getSetLogsForSession,
     getLastPerformance,
+    getCompletedSessionDates,
 } from "@/lib/data/workout";
+import { computeWeeklyStreak } from "@/lib/program/streak";
 import { todayISO, fromISO } from "@/lib/date";
 import {
     parseSetCount,
@@ -52,13 +53,13 @@ export default async function SeancePage({
     // Avant le début du programme : rien à faire, et surtout rien à créer en base.
     if (ctx.dayNumber < 1 || !training || !session || session.dayType === "repos") {
         return (
-            <div className="flex flex-col gap-4 p-4">
-                <div className="flex flex-col items-center justify-center gap-4 rounded-xl border p-8 text-center">
+            <div className="flex flex-col gap-4 px-5 pt-4">
+                <div className="bg-card flex flex-col items-center justify-center gap-4 rounded-3xl p-8 text-center">
                     <div className="bg-muted flex size-14 items-center justify-center rounded-full">
                         <Moon className="size-6" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-semibold">Jour de repos</h1>
+                        <h1 className="font-heading text-2xl font-bold">Jour de repos</h1>
                         <p className="text-muted-foreground mt-1 text-sm">
                             {ctx.dayNumber < 1
                                 ? "Le programme n'a pas encore commencé ce jour-là."
@@ -67,9 +68,9 @@ export default async function SeancePage({
                                 : "Pas de séance prévue ce jour-là en délestage."}
                         </p>
                     </div>
-                    <Button render={<Link href="/" />} nativeButton={false} variant="outline">
+                    <Link href="/" className="bg-muted flex h-11 items-center rounded-full px-5 text-sm font-semibold">
                         Retour à l&apos;accueil
-                    </Button>
+                    </Link>
                 </div>
             </div>
         );
@@ -141,15 +142,36 @@ export default async function SeancePage({
         }),
     );
 
+    // Série de semaines telle qu'elle sera une fois cette séance validée (écran bilan).
+    const streak =
+        program.features.weeklyStreak && wSession
+            ? computeWeeklyStreak(
+                  program,
+                  row.startDate,
+                  row.holdPhase1,
+                  [...(await getCompletedSessionDates(userId, program, row.startDate)), selectedDate],
+                  today,
+              )
+            : null;
+
     return (
         <WorkoutView
+            streak={streak}
+            feeling={wSession?.feeling ?? null}
             today={today}
             selectedDate={selectedDate}
             sessionId={wSession?.id ?? null}
             completed={wSession?.completed ?? false}
             title={session.title}
-            focus={session.focus}
-            phaseLabel={trainingPhase?.shortLabel ?? phase?.label ?? null}
+            dayLabel={[
+                new Intl.DateTimeFormat("fr-CA", { weekday: "short", day: "numeric", month: "short" }).format(
+                    fromISO(selectedDate),
+                ),
+                `Jour ${ctx.dayNumber}`,
+                (trainingPhase?.shortLabel ?? phase?.shortLabel)?.split(" — ")[0],
+            ]
+                .filter(Boolean)
+                .join(" · ")}
             showIntensification={program.features.intensification && phase?.key === "bloc2"}
             isCircuit={Boolean(session.isCircuit)}
             circuitNote={session.circuitNote}

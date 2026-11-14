@@ -21,13 +21,13 @@ import type { ExerciseBlock } from "./types";
 const RESISTANCE_OPTIONS = ["aucune", "10 kg", "20 kg", "30 kg", "40 kg", "50 kg", "60 kg"];
 const ASSIST_OPTIONS = ["strict", "bande 10", "bande 20", "bande 30", "lesté"];
 
-function bandOptionsFor(mode: ExerciseBlock["bandMode"]): string[] {
+export function bandOptionsFor(mode: ExerciseBlock["bandMode"]): string[] {
     if (mode === "resistance") return RESISTANCE_OPTIONS;
     if (mode === "assist") return ASSIST_OPTIONS;
     return [];
 }
 
-function guessBand(value: string | null | undefined, options: string[]): string | null {
+export function guessBand(value: string | null | undefined, options: string[]): string | null {
     if (!value) return null;
     if (value.toLowerCase().includes("strict")) return options.includes("strict") ? "strict" : null;
     const n = value.match(/\d+/)?.[0];
@@ -114,7 +114,7 @@ export function ExerciseCard({
     );
 }
 
-function SwapNotice({
+export function SwapNotice({
     sessionId,
     swap,
 }: {
@@ -158,7 +158,7 @@ function SwapNotice({
     );
 }
 
-function VariantSelector({
+export function VariantSelector({
     sessionId,
     exerciseKey,
     options,
@@ -425,16 +425,22 @@ function SetRow({
     );
 }
 
-function HowToDialog({ block }: { block: ExerciseBlock }) {
+export function HowToDialog({ block, pill = false }: { block: ExerciseBlock; pill?: boolean }) {
     const [open, setOpen] = useState(false);
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger
                 render={
-                    <Button variant="ghost" size="sm" className="text-muted-foreground shrink-0">
-                        <HelpCircle className="size-4" />
-                        Comment ?
-                    </Button>
+                    pill ? (
+                        <button type="button" className="bg-muted h-9 rounded-full px-3 text-xs font-semibold">
+                            Comment ?
+                        </button>
+                    ) : (
+                        <Button variant="ghost" size="sm" className="text-muted-foreground shrink-0">
+                            <HelpCircle className="size-4" />
+                            Comment ?
+                        </Button>
+                    )
                 }
             />
             <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-sm overflow-y-auto overscroll-contain">
