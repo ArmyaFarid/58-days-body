@@ -60,8 +60,8 @@ export function HabitHistoryGrid({ days, meta, trueDates }: HabitHistoryGridProp
                                 title={d}
                                 onClick={() => toggle(h.field, d)}
                                 className={cn(
-                                    "h-5 flex-1 rounded-sm transition-colors",
-                                    state[h.field].has(d) ? "bg-primary" : "bg-muted hover:bg-muted/60",
+                                    "h-7 flex-1 rounded-md transition-colors",
+                                    state[h.field].has(d) ? "bg-brand" : "bg-border",
                                 )}
                             />
                         ))}

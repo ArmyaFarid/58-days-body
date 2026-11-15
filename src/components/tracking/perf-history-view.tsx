@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { differenceInCalendarDays } from "date-fns";
 import { Target, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -38,9 +39,23 @@ export function PerfHistoryView({ exercises, histories, tractionKeys }: PerfHist
 
     if (exercises.length === 0) {
         return (
-            <p className="text-muted-foreground py-8 text-center text-sm">
-                Aucune performance notée pour l&apos;instant. Complète une séance !
-            </p>
+            <div className="bg-card flex flex-col items-center gap-3 rounded-3xl px-6 py-10 text-center">
+                <span className="bg-muted flex size-14 items-center justify-center rounded-full">
+                    <Trophy className="text-muted-foreground size-6" />
+                </span>
+                <div className="flex flex-col gap-1">
+                    <span className="font-heading text-lg font-bold">Pas encore de performance</span>
+                    <span className="text-muted-foreground text-sm">
+                        Tes records et ta progression apparaîtront ici après ta première séance.
+                    </span>
+                </div>
+                <Link
+                    href="/seance"
+                    className="bg-brand text-brand-foreground mt-1 flex h-11 items-center rounded-[0.875rem] px-5 text-sm font-bold"
+                >
+                    Commencer une séance
+                </Link>
+            </div>
         );
     }
 

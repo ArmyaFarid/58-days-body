@@ -16,7 +16,7 @@ export function DayRing({ value, total }: DayRingProps) {
                 cy="60"
                 r={RADIUS}
                 fill="none"
-                className="stroke-brand"
+                className="stroke-brand transition-[stroke-dasharray] duration-700 ease-out"
                 strokeWidth="12"
                 strokeLinecap="round"
                 strokeDasharray={`${ratio * CIRCUMFERENCE} ${CIRCUMFERENCE}`}

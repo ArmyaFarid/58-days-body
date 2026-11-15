@@ -57,7 +57,19 @@ interface AccountsInfo {
     isImpersonating: boolean;
 }
 
+export type SettingsSection =
+    | "programmes"
+    | "internat"
+    | "options"
+    | "objectifs"
+    | "apparence"
+    | "comptes"
+    | "inviter"
+    | "motdepasse"
+    | "danger";
+
 interface SettingsViewProps {
+    section?: SettingsSection;
     programLabel: string;
     programs: { followed: FollowedProgram[]; catalog: CatalogProgram[]; today: string };
     features: {
@@ -89,7 +101,10 @@ export function SettingsView({
     inviteCodes,
     accounts,
     internat,
+    section,
 }: SettingsViewProps) {
+    // Sous-page de réglages : une seule section affichée.
+    const show = (key: SettingsSection) => !section || section === key;
     const router = useRouter();
     const {
         register,
@@ -245,10 +260,9 @@ export function SettingsView({
     }
 
     return (
-        <div className="flex flex-col gap-4 p-4">
-            <h1 className="pt-2 text-2xl font-bold tracking-tight">Paramètres</h1>
+        <div className="flex flex-col gap-4 px-5 pb-4">
 
-            {accounts && (accounts.users.length > 0 || accounts.isImpersonating) ? (
+            {show("comptes") && accounts && (accounts.users.length > 0 || accounts.isImpersonating) ? (
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-base">
@@ -268,6 +282,7 @@ export function SettingsView({
                 </Card>
             ) : null}
 
+            {show("programmes") ? (
             <Card id="programmes">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
@@ -283,7 +298,9 @@ export function SettingsView({
                     />
                 </CardContent>
             </Card>
+            ) : null}
 
+            {show("internat") ? (
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
@@ -319,8 +336,9 @@ export function SettingsView({
                     ) : null}
                 </CardContent>
             </Card>
+            ) : null}
 
-            {features.holdPhase1 || features.creatine ? (
+            {show("options") && (features.holdPhase1 || features.creatine) ? (
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-base">{programLabel} — options</CardTitle>
@@ -354,6 +372,7 @@ export function SettingsView({
                 </Card>
             ) : null}
 
+            {show("apparence") ? (
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
@@ -365,7 +384,9 @@ export function SettingsView({
                     <AppearanceSettings />
                 </CardContent>
             </Card>
+            ) : null}
 
+            {show("objectifs") ? (
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
@@ -423,9 +444,11 @@ export function SettingsView({
                     </Button>
                 </CardContent>
             </Card>
+            ) : null}
 
             {!impersonating ? (
             <>
+            {show("inviter") ? (
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
@@ -474,7 +497,9 @@ export function SettingsView({
                     ) : null}
                 </CardContent>
             </Card>
+            ) : null}
 
+            {show("motdepasse") ? (
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
@@ -529,7 +554,9 @@ export function SettingsView({
                     </form>
                 </CardContent>
             </Card>
+            ) : null}
 
+            {show("danger") ? (
             <Card className="border-destructive/40">
                 <CardHeader>
                     <CardTitle className="text-destructive flex items-center gap-2 text-base">
@@ -585,6 +612,7 @@ export function SettingsView({
                     </Dialog>
                 </CardContent>
             </Card>
+            ) : null}
             </>
             ) : null}
         </div>

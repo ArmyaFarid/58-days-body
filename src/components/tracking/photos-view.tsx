@@ -26,12 +26,14 @@ function dayTag(startDate: string | null, date: string, today: string): string {
     return day >= 1 ? `J${day} · ${when}` : when;
 }
 
-export function PhotosView({ today, startDate, photos }: PhotosViewProps) {
+export function PhotosView({ today, startDate, photos: allPhotos }: PhotosViewProps) {
     const router = useRouter();
     const fileRef = useRef<HTMLInputElement>(null);
     const poseRef = useRef<string>(POSES[0].key);
     const [uploading, setUploading] = useState<string | null>(null);
     const [comparePose, setComparePose] = useState(POSES[0].key);
+    // Photos masquées en attendant la suppression définitive (annulable quelques secondes).
+    const [hidden, setHidden] = useState<Set<number>>(() => new Set());
 
     function pick(pose: string) {
         poseRef.current = pose;
@@ -72,15 +74,38 @@ export function PhotosView({ today, startDate, photos }: PhotosViewProps) {
         }
     }
 
-    async function onDelete(id: number) {
-        try {
-            await deletePhotoAction(id);
-            toast.success("Photo supprimée.");
-            router.refresh();
-        } catch {
-            toast.error("Suppression impossible.");
-        }
+    function onDelete(id: number) {
+        setHidden((h) => new Set(h).add(id));
+        const timer = setTimeout(async () => {
+            try {
+                await deletePhotoAction(id);
+                router.refresh();
+            } catch {
+                setHidden((h) => {
+                    const n = new Set(h);
+                    n.delete(id);
+                    return n;
+                });
+                toast.error("Suppression impossible.");
+            }
+        }, 5000);
+        toast("Photo supprimée", {
+            duration: 5000,
+            action: {
+                label: "Annuler",
+                onClick: () => {
+                    clearTimeout(timer);
+                    setHidden((h) => {
+                        const n = new Set(h);
+                        n.delete(id);
+                        return n;
+                    });
+                },
+            },
+        });
     }
+
+    const photos = allPhotos.filter((p) => !hidden.has(p.id));
 
     const byPose = photos.filter((p) => p.pose === comparePose).sort((a, b) => a.date.localeCompare(b.date));
     const first = byPose[0];

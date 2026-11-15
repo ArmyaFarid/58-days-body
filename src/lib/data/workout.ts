@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, gte, inArray, isNull, lt, or, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lt, max, or, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { workoutSessions, setLogs } from "@/lib/db/schema";
 import { programDayTypes, type InternatSessionState, type Program } from "@/lib/program";
@@ -180,6 +180,57 @@ export async function saveSetLog(input: SaveSetInput): Promise<void> {
                 notes: input.notes,
             },
         });
+}
+
+/** Meilleure série (reps ou secondes) de chaque exercice, avant une date donnée. */
+export async function getBestReps(
+    userId: number,
+    program: Program,
+    exerciseKeys: string[],
+    beforeDate: string,
+): Promise<Record<string, number>> {
+    if (exerciseKeys.length === 0) return {};
+    const rows = await db
+        .select({ exerciseKey: setLogs.exerciseKey, best: max(setLogs.reps) })
+        .from(setLogs)
+        .innerJoin(workoutSessions, eq(setLogs.sessionId, workoutSessions.id))
+        .where(
+            and(
+                eq(workoutSessions.userId, userId),
+                programScope(program),
+                lt(workoutSessions.date, beforeDate),
+                inArray(setLogs.exerciseKey, exerciseKeys),
+            ),
+        )
+        .groupBy(setLogs.exerciseKey);
+    const out: Record<string, number> = {};
+    for (const r of rows) if (r.best != null) out[r.exerciseKey] = r.best;
+    return out;
+}
+
+/** Supprime une série notée (annulation juste après la saisie). */
+export async function deleteSetLog(
+    userId: number,
+    sessionId: number,
+    exerciseKey: string,
+    setIndex: number,
+): Promise<void> {
+    const owned = await db
+        .select({ id: workoutSessions.id })
+        .from(workoutSessions)
+        .where(and(eq(workoutSessions.id, sessionId), eq(workoutSessions.userId, userId)))
+        .limit(1);
+    if (!owned[0]) throw new Error("Séance introuvable.");
+
+    await db
+        .delete(setLogs)
+        .where(
+            and(
+                eq(setLogs.sessionId, sessionId),
+                eq(setLogs.exerciseKey, exerciseKey),
+                eq(setLogs.setIndex, setIndex),
+            ),
+        );
 }
 
 /** Applique une variante à toutes les séries déjà loggées d'un exercice (session). */

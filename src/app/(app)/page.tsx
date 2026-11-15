@@ -8,6 +8,7 @@ import { NutritionSummaryCard } from "@/components/nutrition/nutrition-summary-c
 import { ProgramPill } from "@/components/program-pill";
 import { ResumeProgramButton } from "@/components/resume-program-button";
 import { WeightTile } from "@/components/weight-tile";
+import { InstallHint } from "@/components/install-hint";
 import { DayRing } from "@/components/day-ring";
 import { getSession as getAuthSession } from "@/lib/auth";
 import { getNutritionGoals } from "@/lib/data/settings";
@@ -30,7 +31,7 @@ function measurementIsDue(dates: string[], today: string): boolean {
 }
 
 export default async function DashboardPage() {
-    const { userId } = (await getAuthSession())!;
+    const { userId, username } = (await getAuthSession())!;
     const { program, row, all } = (await getActiveProgram(userId))!;
     const startDate = row.startDate;
     const today = todayISO();
@@ -42,25 +43,17 @@ export default async function DashboardPage() {
     const session = program.sessions[dayType];
     const training = program.isTrainingDay(dayType, phase?.key ?? null);
 
-    const [
-        weights,
-        todayWeight,
-        habit,
-        workoutSession,
-        nutritionGoals,
-        foodEntries,
-        measurements,
-        completedDates,
-    ] = await Promise.all([
-        getWeights(userId),
-        getWeightForDate(userId, today),
-        getHabit(userId, today),
-        getSessionForDate(userId, program, today),
-        getNutritionGoals(userId),
-        getLoggedEntries(userId, today),
-        program.features.measurementsPrimary ? getMeasurements(userId) : Promise.resolve([]),
-        getCompletedSessionDates(userId, program, startDate),
-    ]);
+    const [weights, todayWeight, habit, workoutSession, nutritionGoals, foodEntries, measurements, completedDates] =
+        await Promise.all([
+            getWeights(userId),
+            getWeightForDate(userId, today),
+            getHabit(userId, today),
+            getSessionForDate(userId, program, today),
+            getNutritionGoals(userId),
+            getLoggedEntries(userId, today),
+            program.features.measurementsPrimary ? getMeasurements(userId) : Promise.resolve([]),
+            getCompletedSessionDates(userId, program, startDate),
+        ]);
     const trend = computeTrend(weights, program.trend);
     const sessionDone = workoutSession?.completed === true;
     const meta = habitMetaFor(program, { creatine: row.creatine });
@@ -95,7 +88,7 @@ export default async function DashboardPage() {
             today,
         );
 
-    const longDate = new Intl.DateTimeFormat("fr-CA", { weekday: "long", day: "numeric", month: "long" }).format(
+    const longDate = new Intl.DateTimeFormat("fr-CA", { weekday: "short", day: "numeric", month: "short" }).format(
         fromISO(today),
     );
     const remainingDays = length != null ? Math.max(0, length - dayNumber) : 0;
@@ -117,12 +110,25 @@ export default async function DashboardPage() {
     // Estimation grossière : ~2 min par série, repos compris.
     const minutes = Math.max(5, Math.round((setTotal * 2) / 5) * 5);
 
+    // Prénom affiché : l'identifiant de connexion, avec une majuscule.
+    const firstName = username.charAt(0).toUpperCase() + username.slice(1);
+    const dayContext = beforeStart
+        ? null
+        : !isTrainingToday
+          ? "jour de repos"
+          : sessionDone
+            ? "séance faite"
+            : "séance à faire";
+
     const header = (
         <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="text-muted-foreground truncate text-[0.8125rem] first-letter:uppercase">{longDate}</span>
+                <span className="text-muted-foreground truncate text-[0.8125rem] first-letter:uppercase">
+                    {longDate}
+                    {dayContext ? ` · ${dayContext}` : ""}
+                </span>
                 <span className="font-heading text-[1.625rem] leading-tight font-bold tracking-[-0.03125rem] whitespace-nowrap">
-                    Salut, prêt ?
+                    Salut {firstName}
                 </span>
             </div>
             <div className="flex min-w-0 items-center gap-2">
@@ -273,6 +279,48 @@ export default async function DashboardPage() {
         </div>
     );
 
+    // Jalons : séances faites, semaines complètes, fin de la première phase.
+    const done = completedDates.length;
+    const SESSION_STEPS = [1, 5, 10, 25, 50, 100];
+    const earned: string[] = SESSION_STEPS.filter((n) => done >= n).map((n) =>
+        n === 1 ? "1ʳᵉ séance" : `${n} séances`,
+    );
+    if (streak && streak.weeks >= 1) earned.push(streak.weeks >= 4 ? "4 semaines d’affilée" : "Semaine complète");
+    const firstPhase = program.getPhase(1);
+    if (firstPhase && !beforeStart) {
+        let end = 1;
+        while (end < 400 && program.getPhase(end + 1)?.key === firstPhase.key) end++;
+        if (end < 400 && dayNumber > end) earned.push(`${firstPhase.label.split(" — ")[0].split(" (")[0]} terminé`);
+    }
+    const nextStep = SESSION_STEPS.find((n) => done < n);
+    const milestones =
+        earned.length > 0 || nextStep ? (
+            <section className="flex flex-col gap-2.5">
+                <h2 className="text-[0.9375rem] font-semibold">Jalons</h2>
+                <div className="-mx-5 flex gap-2 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {[...earned].reverse().map((m) => (
+                        <span
+                            key={m}
+                            className="bg-card flex h-11 shrink-0 items-center gap-2 rounded-full pr-4 pl-1.5 text-[0.8125rem] font-semibold whitespace-nowrap"
+                        >
+                            <span className="bg-brand text-brand-foreground flex size-8 items-center justify-center rounded-full">
+                                <Trophy className="size-4" />
+                            </span>
+                            {m}
+                        </span>
+                    ))}
+                    {nextStep ? (
+                        <span className="text-muted-foreground flex h-11 shrink-0 items-center gap-2 rounded-full border border-dashed pr-4 pl-1.5 text-[0.8125rem] font-semibold whitespace-nowrap">
+                            <span className="bg-muted flex size-8 items-center justify-center rounded-full">
+                                <Trophy className="size-4" />
+                            </span>
+                            {nextStep === 1 ? "1ʳᵉ séance" : `${nextStep} séances`} · {done}/{nextStep}
+                        </span>
+                    ) : null}
+                </div>
+            </section>
+        ) : null;
+
     const habitsCard = (
         <section className="bg-card rounded-[1.25rem] p-4">
             <HabitChecklist
@@ -282,12 +330,15 @@ export default async function DashboardPage() {
                 showSession={program.features.sessionHabit}
                 sessionDone={sessionDone}
                 compact
+                href="/habitudes"
             />
         </section>
     );
 
     // Repas proposé selon l'heure locale : matin avant 15 h, soir ensuite.
-    const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", timeZone: TIMEZONE }).format(new Date()));
+    const hour = Number(
+        new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", timeZone: TIMEZONE }).format(new Date()),
+    );
     const preset = PRESETS.find((p) => p.key === (hour < 15 ? "matin" : "soir")) ?? PRESETS[0];
     const nutritionTotals = totalsOfEntries(foodEntries);
     const nutritionCard = (
@@ -304,6 +355,8 @@ export default async function DashboardPage() {
     return (
         <div className="flex flex-col gap-4 px-5 pt-4">
             {header}
+
+            <InstallHint />
 
             {paused ? (
                 <section className="bg-card flex items-center gap-3 rounded-[1.25rem] border border-amber-500/40 p-4">
@@ -326,6 +379,7 @@ export default async function DashboardPage() {
 
             {seanceCard}
             {tiles}
+            {milestones}
             {habitsCard}
 
             {trend.suggestionText ? (

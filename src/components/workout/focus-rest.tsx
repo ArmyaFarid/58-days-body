@@ -15,6 +15,8 @@ interface FocusRestProps {
     nextHint: string | null;
     onAdjust: (seconds: number) => void;
     onDone: () => void;
+    /** Annule la série qui vient d'être notée. */
+    onUndo?: () => void;
 }
 
 const RADIUS = 130;
@@ -63,6 +65,7 @@ export function FocusRest({
     nextHint,
     onAdjust,
     onDone,
+    onUndo,
 }: FocusRestProps) {
     const [now, setNow] = useState(() => Date.now());
     // Calculé depuis l'heure de fin : reste juste même si l'app passe en arrière-plan.
@@ -92,6 +95,15 @@ export function FocusRest({
                     {justDoneBadge}
                 </span>
             </div>
+            {onUndo ? (
+                <button
+                    type="button"
+                    onClick={onUndo}
+                    className="text-muted-foreground -mt-4 self-end text-[0.8125rem] font-semibold underline-offset-2 hover:underline"
+                >
+                    Annuler cette série
+                </button>
+            ) : null}
 
             <div className="flex flex-1 items-center justify-center">
                 <svg

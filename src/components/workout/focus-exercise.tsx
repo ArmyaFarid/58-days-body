@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { ExerciseSvg, hasExerciseSvg } from "@/components/exercise-svg";
 import { HowToDialog, SwapNotice, VariantSelector, bandOptionsFor, guessBand } from "./exercise-card";
 import { targetFloor } from "./focus-sequence";
+import { useRepeatPress } from "@/hooks/use-repeat-press";
 import type { ExerciseBlock, LoggedSet } from "./types";
 
 interface FocusExerciseProps {
@@ -17,6 +18,8 @@ interface FocusExerciseProps {
     variant: string | null;
     showIntensification: boolean;
     pending: boolean;
+    /** Meilleure série connue (record à battre). */
+    best: number | null;
     onVariantChange: (v: string | null) => void;
     onSelectSet: (i: number) => void;
     onValidate: (reps: number | null, band: string | null) => void;
@@ -31,6 +34,7 @@ export function FocusExercise({
     variant,
     showIntensification,
     pending,
+    best,
     onVariantChange,
     onSelectSet,
     onValidate,
@@ -46,6 +50,9 @@ export function FocusExercise({
         current?.band ?? guessBand(last?.band, options) ?? guessBand(block.band, options),
     );
     const [variantOpen, setVariantOpen] = useState(false);
+
+    const minus = useRepeatPress(() => setReps((r) => Math.max(0, r - step)));
+    const plus = useRepeatPress(() => setReps((r) => r + step));
 
     const beat = last?.reps != null ? reps - last.reps : null;
     const unit = isTime ? "secondes" : "répétitions";
@@ -134,25 +141,27 @@ export function FocusExercise({
                     <div className="flex items-center justify-between gap-3">
                         <button
                             type="button"
-                            onClick={() => setReps((r) => Math.max(0, r - step))}
+                            {...minus}
                             aria-label={`${step} de moins`}
                             className="bg-border flex size-18 shrink-0 items-center justify-center rounded-full active:scale-95"
                         >
                             <Minus className="size-7" strokeWidth={2.8} />
                         </button>
-                        <span className="font-heading min-w-0 text-7xl leading-none font-bold tabular-nums">
-                            {reps}
-                        </span>
+                        <span key={reps} className="font-heading animate-in zoom-in-90 min-w-0 text-7xl leading-none font-bold tabular-nums duration-150">{reps}</span>
                         <button
                             type="button"
-                            onClick={() => setReps((r) => r + step)}
+                            {...plus}
                             aria-label={`${step} de plus`}
                             className="bg-border flex size-18 shrink-0 items-center justify-center rounded-full active:scale-95"
                         >
                             <Plus className="size-7" strokeWidth={2.8} />
                         </button>
                     </div>
-                    {beat != null && beat > 0 ? (
+                    {best != null && reps > best ? (
+                        <span className="bg-streak text-brand-foreground animate-in zoom-in-75 self-center rounded-lg px-2.5 py-[0.3125rem] text-[0.8125rem] font-bold">
+                            Nouveau record ! (ancien : {best})
+                        </span>
+                    ) : beat != null && beat > 0 ? (
                         <span className="bg-brand text-brand-foreground self-center rounded-lg px-2.5 py-[0.3125rem] text-[0.8125rem] font-bold">
                             +{beat} vs la dernière fois
                         </span>

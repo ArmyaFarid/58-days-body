@@ -1,93 +1,146 @@
-import { SettingsView } from "@/components/settings-view";
-import { LogoutButton } from "@/components/logout-button";
-import type { FollowedProgram } from "@/components/my-programs";
-import { getSession } from "@/lib/auth";
-import { getSettingsView } from "@/lib/data/settings";
-import { getActiveProgram, getAbandonedProgramIds, scheduleContext } from "@/lib/data/user-programs";
-import { getInviteCodes, getInvitedUsers } from "@/lib/data/invite-codes";
-import { getInternatPreference } from "@/lib/data/users";
-import { getProgram, CATALOG, INTERNAT_ANCHOR_NOTE, type Program } from "@/lib/program";
-import type { UserProgram } from "@/lib/data/user-programs";
-import { todayISO, formatShort } from "@/lib/date";
+import Link from "next/link";
+import {
+    BedSingle,
+    ChevronLeft,
+    ChevronRight,
+    Dumbbell,
+    KeyRound,
+    Palette,
+    SlidersHorizontal,
+    Target,
+    Ticket,
+    TriangleAlert,
+    Users,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { LogoutRow } from "@/components/logout-button";
+import type { SettingsSection } from "@/components/settings-view";
+import { loadSettings } from "./load";
 
-function progressText(program: Program, row: UserProgram): string {
-    const ctx = scheduleContext(row);
-    if (ctx.dayNumber < 1) return `Démarre le ${formatShort(row.startDate)}`;
-    const phase = program.trainingPhase?.(ctx)?.label ?? program.getPhase(ctx.dayNumber)?.label;
-    const day = program.length != null ? `Jour ${ctx.dayNumber} / ${program.length}` : `Jour ${ctx.dayNumber}`;
-    return phase ? `${day} · ${phase}` : day;
+interface Row {
+    section: SettingsSection;
+    label: string;
+    hint: string;
+    icon: React.ComponentType<{ className?: string }>;
+    danger?: boolean;
+}
+
+function Group({ title, rows }: { title: string; rows: Row[] }) {
+    if (rows.length === 0) return null;
+    return (
+        <section className="flex flex-col gap-2">
+            <h2 className="text-muted-foreground px-1 text-xs font-bold tracking-[0.0625rem] uppercase">{title}</h2>
+            <div className="bg-card flex flex-col overflow-hidden rounded-[1.25rem]">
+                {rows.map(({ section, label, hint, icon: Icon, danger }) => (
+                    <Link
+                        key={section}
+                        href={`/parametres/${section}`}
+                        className="flex items-center gap-3 border-b px-4 py-3 last:border-0"
+                    >
+                        <span
+                            className={cn(
+                                "flex size-9 shrink-0 items-center justify-center rounded-xl",
+                                danger ? "bg-destructive/15 text-destructive" : "bg-muted",
+                            )}
+                        >
+                            <Icon className="size-[1.125rem]" />
+                        </span>
+                        <span className="flex min-w-0 flex-1 flex-col">
+                            <span className={cn("font-medium", danger && "text-destructive")}>{label}</span>
+                            <span className="text-muted-foreground truncate text-[0.8125rem]">{hint}</span>
+                        </span>
+                        <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+                    </Link>
+                ))}
+            </div>
+        </section>
+    );
 }
 
 export default async function ParametresPage() {
-    const session = (await getSession())!;
-    const userId = session.userId;
-    const [settings, active, abandonedIds, inviteCodes, invitedUsers, internat] = await Promise.all([
-        getSettingsView(userId),
-        getActiveProgram(userId),
-        getAbandonedProgramIds(userId),
-        getInviteCodes(userId),
-        getInvitedUsers(session.ownerUserId),
-        getInternatPreference(userId),
-    ]);
-    const { program, row, all } = active!;
+    const { program, props } = await loadSettings();
+    const { features, settings, internat, accounts, programs } = props;
+    const impersonating = accounts.isImpersonating;
+    const followed = programs.followed.length;
 
-    const followed: FollowedProgram[] = all.map((r) => {
-        const p = getProgram(r.programId);
-        return {
-            id: p.id,
-            label: p.label,
-            paused: r.status === "paused",
-            isCurrent: r.programId === row.programId,
-            progress: progressText(p, r),
-            equipment: p.equipment,
-            equipmentOptional: p.equipmentOptional,
-        };
-    });
-    // Catalogue + programmes abandonnés (reprenables même s'ils ont quitté le catalogue).
-    const offered = [...CATALOG, ...abandonedIds.map((id) => getProgram(id)).filter((p) => !CATALOG.includes(p))];
-    const catalog = offered
-        .filter((p) => !all.some((r) => r.programId === p.id))
-        .map((p) => ({
-            id: p.id,
-            label: p.label,
-            objective: p.objective,
-            equipment: p.equipment,
-            equipmentOptional: p.equipmentOptional,
-        }));
+    const programme: Row[] = [
+        {
+            section: "programmes",
+            label: "Mes programmes",
+            hint: `${followed} suivi${followed > 1 ? "s" : ""} · ${program.label}`,
+            icon: Dumbbell,
+        },
+        {
+            section: "internat",
+            label: "Mode Internat",
+            hint: internat.mode ? "Activé" : "Désactivé",
+            icon: BedSingle,
+        },
+        ...(features.holdPhase1 || features.creatine
+            ? [
+                  {
+                      section: "options" as const,
+                      label: "Options du programme",
+                      hint: program.label,
+                      icon: SlidersHorizontal,
+                  },
+              ]
+            : []),
+        {
+            section: "objectifs",
+            label: "Objectifs nutrition",
+            hint: `${settings.phase1.proteinGoal} g protéines · ${settings.phase1.calorieGoal.toLocaleString("fr-FR")} kcal`,
+            icon: Target,
+        },
+    ];
+    const app: Row[] = [
+        { section: "apparence", label: "Apparence", hint: "Thème, couleur, taille du texte", icon: Palette },
+    ];
+    const compte: Row[] = [
+        ...(accounts.users.length > 0 || impersonating
+            ? [{ section: "comptes" as const, label: "Comptes", hint: "Basculer vers un compte invité", icon: Users }]
+            : []),
+        ...(!impersonating
+            ? [
+                  {
+                      section: "inviter" as const,
+                      label: "Inviter quelqu’un",
+                      hint: "Code d’invitation à usage unique",
+                      icon: Ticket,
+                  },
+                  {
+                      section: "motdepasse" as const,
+                      label: "Mot de passe",
+                      hint: "Changer le mot de passe",
+                      icon: KeyRound,
+                  },
+                  {
+                      section: "danger" as const,
+                      label: "Zone sensible",
+                      hint: "Réinitialiser mes données",
+                      icon: TriangleAlert,
+                      danger: true,
+                  },
+              ]
+            : []),
+    ];
 
     return (
-        // Remonte la vue quand le programme affiché change (pause, abandon, bascule) :
-        // sinon les champs garderaient les objectifs de l'ancien programme.
-        <>
-            <SettingsView
-                key={program.id}
-                programLabel={program.label}
-                programs={{ followed, catalog, today: todayISO() }}
-                features={{
-                    trackFat: program.features.trackFat,
-                    targetWeight: program.features.targetWeight,
-                    multiPhase: program.nutritionPhase2Key != null,
-                    holdPhase1: program.trainingPhase != null,
-                    creatine: program.features.creatineOptional === true,
-                }}
-                phaseLabels={{
-                    phase1: program.getPhase(1)?.label ?? "Phase 1",
-                    phase2: program.getPhase(9999)?.label ?? "Phase 2",
-                }}
-                settings={settings}
-                internat={{ ...internat, anchorNote: INTERNAT_ANCHOR_NOTE }}
-                inviteCodes={inviteCodes.map((c) => ({ code: c.code, used: c.usedBy != null }))}
-                accounts={{
-                    users: invitedUsers,
-                    currentUserId: session.userId,
-                    ownerUserId: session.ownerUserId,
-                    ownerUsername: session.ownerUsername,
-                    isImpersonating: session.isImpersonating,
-                }}
-            />
-            <div className="px-4 pb-4">
-                <LogoutButton />
+        <div className="flex flex-col gap-5 px-5 pt-4 pb-4">
+            <div className="flex items-center gap-3">
+                <Link
+                    href="/"
+                    aria-label="Retour à l’accueil"
+                    className="bg-card flex size-11 shrink-0 items-center justify-center rounded-full"
+                >
+                    <ChevronLeft className="size-5" strokeWidth={2.4} />
+                </Link>
+                <h1 className="font-heading text-[1.75rem] font-bold tracking-[-0.03125rem]">Paramètres</h1>
             </div>
-        </>
+            <Group title="Programme" rows={programme} />
+            <Group title="Application" rows={app} />
+            <Group title="Compte" rows={compte} />
+            <LogoutRow />
+        </div>
     );
 }

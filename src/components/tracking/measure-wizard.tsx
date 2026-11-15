@@ -9,6 +9,7 @@ import { upsertMeasurementAction } from "@/lib/actions";
 import type { Measurement } from "@/lib/data/measurements";
 import type { MeasurementKey } from "@/lib/program";
 import { BodySilhouette, MEASUREMENT_LABELS } from "./body-silhouette";
+import { useRepeatPress } from "@/hooks/use-repeat-press";
 
 const TIPS: Record<MeasurementKey, string> = {
     shoulders: "Mètre à l’horizontale, au point le plus large des épaules, bras le long du corps.",
@@ -69,6 +70,9 @@ export function MeasureWizard({ today, fields, initial, last, onClose }: Measure
         const next = Math.max(0, Math.round((base + delta) / STEP) * STEP);
         setValues((v) => ({ ...v, [key]: cm(next) }));
     }
+
+    const minus = useRepeatPress(() => bump(-STEP));
+    const plus = useRepeatPress(() => bump(STEP));
 
     function save(final: Record<string, string>) {
         startSaving(async () => {
@@ -157,7 +161,7 @@ export function MeasureWizard({ today, fields, initial, last, onClose }: Measure
                     <div className="flex items-center justify-between gap-3">
                         <button
                             type="button"
-                            onClick={() => bump(-STEP)}
+                            {...minus}
                             aria-label="0,5 cm de moins"
                             className="bg-border flex size-18 shrink-0 items-center justify-center rounded-full active:scale-95"
                         >
@@ -179,7 +183,7 @@ export function MeasureWizard({ today, fields, initial, last, onClose }: Measure
                         </label>
                         <button
                             type="button"
-                            onClick={() => bump(STEP)}
+                            {...plus}
                             aria-label="0,5 cm de plus"
                             className="bg-border flex size-18 shrink-0 items-center justify-center rounded-full active:scale-95"
                         >

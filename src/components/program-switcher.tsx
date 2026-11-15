@@ -54,7 +54,7 @@ export function ProgramSwitcher({ programs, current }: ProgramSwitcherProps) {
                 </button>
             ))}
             <Link
-                href="/parametres#programmes"
+                href="/parametres/programmes"
                 aria-label="Ajouter un programme"
                 className="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-full"
             >

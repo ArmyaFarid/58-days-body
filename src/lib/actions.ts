@@ -51,6 +51,7 @@ import { upsertWeight } from "@/lib/data/weight";
 import { setHabit, type HabitField } from "@/lib/data/habits";
 import {
     saveSetLog,
+    deleteSetLog,
     setSessionCompleted,
     setSessionFeeling,
     updateExerciseVariant,
@@ -113,6 +114,19 @@ export async function saveSetLogAction(input: z.infer<typeof setLogSchema>) {
     const parsed = setLogSchema.parse(input);
     await saveSetLog({ userId, ...parsed });
     await freezeInternat(userId, parsed.sessionId);
+    revalidatePath("/seance");
+}
+
+const setRefSchema = z.object({
+    sessionId: z.number().int().positive(),
+    exerciseKey: z.string().min(1).max(64),
+    setIndex: z.number().int().min(0).max(20),
+});
+
+export async function deleteSetLogAction(input: z.infer<typeof setRefSchema>) {
+    const userId = await requireUserId();
+    const { sessionId, exerciseKey, setIndex } = setRefSchema.parse(input);
+    await deleteSetLog(userId, sessionId, exerciseKey, setIndex);
     revalidatePath("/seance");
 }
 
@@ -351,7 +365,7 @@ export async function setNutritionGoalsAction(input: z.infer<typeof goalsSchema>
 export async function generateInviteCodeAction() {
     const userId = await requireUserId();
     const code = await createInviteCode(userId);
-    revalidatePath("/parametres");
+    revalidatePath("/parametres", "layout");
     return code;
 }
 

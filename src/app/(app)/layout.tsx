@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { getActiveProgram } from "@/lib/data/user-programs";
 import { AppNav } from "@/components/app-nav";
 import { ThemePicker } from "@/components/theme-picker";
+import { PendingSetsSync } from "@/components/pending-sets-sync";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -20,6 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </main>
             <AppNav />
             <ThemePicker />
+            <PendingSetsSync />
         </div>
     );
 }

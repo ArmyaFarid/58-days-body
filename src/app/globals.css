@@ -53,7 +53,8 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
+  /* Mode clair : fond gris très clair, cartes blanches par-dessus. */
+  --background: #f1f2f5;
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -69,15 +70,15 @@
   --nav: #ffffff;
   --primary: var(--brand-ink);
   --primary-foreground: #ffffff;
-  --secondary: oklch(0.97 0 0);
+  --secondary: #eceef2;
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
+  --muted: #eceef2;
+  --muted-foreground: #646a75;
+  --accent: #eceef2;
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --border: #e1e4e9;
+  --input: #e1e4e9;
   --ring: var(--brand-ink);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);

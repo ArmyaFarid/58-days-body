@@ -31,12 +31,16 @@ function DialogOverlay({
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "fixed inset-0 isolate z-50 bg-black/50 duration-200 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className
       )}
       {...props}
     />
   )
+}
+
+function isSheet() {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches
 }
 
 function DialogContent({
@@ -47,17 +51,53 @@ function DialogContent({
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
 }) {
+  // Glisser la feuille vers le bas (téléphone) la ferme, comme une feuille native.
+  const start = React.useRef<number | null>(null)
+  const delta = React.useRef(0)
+
+  function onTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+    const el = e.currentTarget
+    // Uniquement quand le contenu est tout en haut : sinon on laisse défiler.
+    if (!isSheet() || el.scrollTop > 0) return
+    start.current = e.touches[0].clientY
+    delta.current = 0
+    el.style.transition = "none"
+  }
+
+  function onTouchMove(e: React.TouchEvent<HTMLDivElement>) {
+    if (start.current == null) return
+    delta.current = Math.max(0, e.touches[0].clientY - start.current)
+    e.currentTarget.style.transform = `translateY(${delta.current}px)`
+  }
+
+  function onTouchEnd(e: React.TouchEvent<HTMLDivElement>) {
+    const el = e.currentTarget
+    if (start.current == null) return
+    start.current = null
+    el.style.transition = "transform 200ms ease-out"
+    if (delta.current > 110) {
+      el.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))
+    }
+    el.style.transform = ""
+  }
+
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // Téléphone : feuille ancrée en bas. Écran large : fenêtre centrée.
+          "fixed inset-x-0 bottom-0 z-50 mx-auto grid max-h-[calc(100dvh-3rem)] w-full gap-4 overflow-y-auto overscroll-contain rounded-t-3xl bg-popover px-5 pt-7 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-sm text-popover-foreground duration-200 outline-none data-open:animate-in data-open:slide-in-from-bottom data-closed:animate-out data-closed:slide-out-to-bottom",
+          "sm:top-1/2 sm:right-auto sm:bottom-auto sm:left-1/2 sm:mx-0 sm:max-w-sm sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:p-5 sm:ring-1 sm:ring-foreground/10 sm:data-open:fade-in-0 sm:data-open:zoom-in-95 sm:data-closed:fade-out-0 sm:data-closed:zoom-out-95",
           className
         )}
         {...props}
       >
+        <span aria-hidden className="absolute top-2.5 left-1/2 h-1.5 w-10 -translate-x-1/2 rounded-full bg-border sm:hidden" />
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close

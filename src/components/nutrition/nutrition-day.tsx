@@ -156,7 +156,7 @@ export function NutritionDay({
                                 cy="60"
                                 r="52"
                                 fill="none"
-                                className="stroke-brand"
+                                className="stroke-brand transition-[stroke-dasharray] duration-700 ease-out"
                                 strokeWidth="12"
                                 strokeLinecap="round"
                                 strokeDasharray={`${ratio * RING} ${RING}`}

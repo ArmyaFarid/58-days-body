@@ -10,6 +10,7 @@ import {
     getSetLogsForSession,
     getLastPerformance,
     getCompletedSessionDates,
+    getBestReps,
 } from "@/lib/data/workout";
 import { computeWeeklyStreak } from "@/lib/program/streak";
 import { todayISO, fromISO } from "@/lib/date";
@@ -92,6 +93,15 @@ export default async function SeancePage({
     const internat = effectiveInternat(wSession?.internat ?? null, selectedDate, today, preference);
     const slots = applyInternat(program.id, session.exercises, internat);
 
+    const bests = isFuture
+        ? {}
+        : await getBestReps(
+              userId,
+              program,
+              slots.map((s) => s.exercise.key),
+              selectedDate,
+          );
+
     const blocks: ExerciseBlock[] = await Promise.all(
         slots.map(async ({ exercise: ex, swap }) => {
             const lexicon = program.lexicon[ex.lexiconKey] ?? INTERNAT_LEXICON[ex.lexiconKey];
@@ -126,6 +136,7 @@ export default async function SeancePage({
                 setCount: parseSetCount(ex.sets),
                 logged: loggedMap,
                 last: lastMap,
+                best: bests[ex.key] ?? null,
                 variantsEnabled: program.features.variants,
                 variants: program.variants?.[ex.key] ?? variantsFor(ex.key),
                 variant: todayVariant,

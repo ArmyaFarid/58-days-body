@@ -70,7 +70,7 @@ export function NutritionSummaryCard({
                             cy="60"
                             r="50"
                             fill="none"
-                            className="stroke-brand"
+                            className="stroke-brand transition-[stroke-dasharray] duration-700 ease-out"
                             strokeWidth="14"
                             strokeLinecap="round"
                             strokeDasharray={`${ratio * RING} ${RING}`}

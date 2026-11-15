@@ -4,12 +4,14 @@ import { useCallback, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { SkipForward, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { completeSessionAction, saveSetLogAction, setSessionFeelingAction } from "@/lib/actions";
+import { completeSessionAction, deleteSetLogAction, saveSetLogAction, setSessionFeelingAction } from "@/lib/actions";
+import { saveSetOrQueue, unqueueSet } from "@/lib/offline-sets";
+import { useWakeLock } from "@/hooks/use-wake-lock";
 import { FocusExercise } from "./focus-exercise";
 import { FocusRest, primeAudio } from "./focus-rest";
 import { FocusSummary } from "./focus-summary";
 import { firstOpenSet, initialLogs, isExerciseDone, nextTarget, type Logs, type Target } from "./focus-sequence";
-import type { ExerciseBlock } from "./types";
+import type { ExerciseBlock, LoggedSet } from "./types";
 import type { WeeklyStreak } from "@/lib/program/streak";
 import type { SessionFeeling } from "@/lib/data/workout";
 
@@ -65,8 +67,24 @@ export function FocusMode({
     const [startedAt] = useState(() => Date.now());
     const [minutes, setMinutes] = useState(0);
     const [feeling, setFeeling] = useState<SessionFeeling | null>(initialFeeling);
+    // Records à battre, mis à jour dès qu'une série les dépasse.
+    const [bests, setBests] = useState<Record<string, number | null>>(() =>
+        Object.fromEntries(blocks.map((b) => [b.key, b.best])),
+    );
     const [saving, startSaving] = useTransition();
     const [completing, startCompleting] = useTransition();
+    // Dernière série notée, pour « Annuler » juste après.
+    const [lastSaved, setLastSaved] = useState<{
+        target: Target;
+        key: string;
+        set: number;
+        previous: LoggedSet | undefined;
+        prevLogs: Logs;
+        prevBest: number | null;
+    } | null>(null);
+
+    // Séance ouverte : l'écran ne se met pas en veille entre deux séries.
+    useWakeLock(true);
 
     const unitLabel = isCircuit ? "Tour" : "Série";
     const block = blocks[target.ex];
@@ -110,20 +128,28 @@ export function FocusMode({
         const current = target;
         const b = blocks[current.ex];
         startSaving(async () => {
+            const input = {
+                sessionId,
+                exerciseKey: b.key,
+                setIndex: current.set,
+                reps,
+                band,
+                variant: variants[b.key] ?? null,
+                notes: null,
+            };
             try {
-                await saveSetLogAction({
-                    sessionId,
-                    exerciseKey: b.key,
-                    setIndex: current.set,
-                    reps,
-                    band,
-                    variant: variants[b.key] ?? null,
-                    notes: null,
-                });
+                // Pas de réseau (salle en sous-sol…) : la série est gardée et partira au retour du réseau.
+                await saveSetOrQueue(input);
             } catch {
                 toast.error("Échec de l'enregistrement.");
                 return;
             }
+            const best = bests[b.key];
+            const record = reps != null && best != null && reps > best;
+            if (reps != null && (best == null || reps > best)) setBests((m) => ({ ...m, [b.key]: reps }));
+            if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(record ? [60, 40, 60, 40, 120] : 30);
+            const saved = { target: current, key: b.key, set: current.set, previous: logs[b.key]?.[current.set], prevLogs: logs, prevBest: best };
+            setLastSaved(saved);
             const nextLogs: Logs = {
                 ...logs,
                 [b.key]: { ...logs[b.key], [current.set]: { reps, band } },
@@ -133,7 +159,9 @@ export function FocusMode({
             const gain = reps != null && last != null ? reps - last : null;
             setJustDone({
                 label: `${unitLabel} ${current.set + 1} validé${isCircuit ? "" : "e"}`,
-                badge: `${reps ?? 0}${b.bandMode === "time" ? " s" : " reps"}${gain != null && gain > 0 ? ` · +${gain}` : ""}`,
+                badge: record
+                    ? `Record ! ${reps}${b.bandMode === "time" ? " s" : " reps"}`
+                    : `${reps ?? 0}${b.bandMode === "time" ? " s" : " reps"}${gain != null && gain > 0 ? ` · +${gain}` : ""}`,
             });
 
             const next = nextTarget(blocks, nextLogs, skipped, current.ex, isCircuit);
@@ -145,9 +173,26 @@ export function FocusMode({
             }
             setTarget(next);
             // Circuit : on enchaîne les exercices, repos seulement en fin de tour.
-            if (isCircuit && next.set === current.set) setPhase("set");
-            else startRest(restSeconds);
+            if (isCircuit && next.set === current.set) {
+                setPhase("set");
+                toast(`${b.name} : ${reps ?? 0} notées`, { action: { label: "Annuler", onClick: () => undoWith(saved) } });
+            } else startRest(restSeconds);
         });
+    }
+
+    function undoWith(u: NonNullable<typeof lastSaved>) {
+        setLastSaved(null);
+        setLogs(u.prevLogs);
+        // Le record à battre redevient celui d'avant la série annulée.
+        setBests((m) => ({ ...m, [u.key]: u.prevBest }));
+        setTarget(u.target);
+        setPhase("set");
+        const ref = { sessionId, exerciseKey: u.key, setIndex: u.set };
+        if (unqueueSet(ref)) return;
+        const revert = u.previous
+            ? saveSetLogAction({ ...ref, reps: u.previous.reps, band: u.previous.band, variant: variants[u.key] ?? null, notes: null })
+            : deleteSetLogAction(ref);
+        revert.catch(() => toast.error("Annulation impossible."));
     }
 
     function skip() {
@@ -239,6 +284,7 @@ export function FocusMode({
                         variant={variants[block.key] ?? null}
                         showIntensification={showIntensification}
                         pending={saving}
+                        best={bests[block.key] ?? null}
                         onVariantChange={(v) => setVariants((m) => ({ ...m, [block.key]: v }))}
                         onSelectSet={(i) => goTo(target.ex, i)}
                         onValidate={validate}
@@ -262,6 +308,7 @@ export function FocusMode({
                                 setRestTotal((t) => Math.max(15, t + s));
                             }}
                             onDone={endRest}
+                            onUndo={lastSaved ? () => undoWith(lastSaved) : undefined}
                         />
                     </div>
                 ) : (

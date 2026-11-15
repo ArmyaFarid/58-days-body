@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Check } from "lucide-react";
+import Link from "next/link";
+import { Check, ChevronRight } from "lucide-react";
 import { setHabitAction } from "@/lib/actions";
 import type { HabitMeta } from "@/lib/habits-meta";
 import type { HabitDay, HabitField } from "@/lib/data/habits";
@@ -17,6 +18,8 @@ interface HabitChecklistProps {
     sessionDone?: boolean;
     /** Puces compactes (accueil) au lieu de lignes. */
     compact?: boolean;
+    /** Lien vers le détail (séries, 14 jours), affiché sur le compteur. */
+    href?: string;
 }
 
 function Chip({ done, label, onClick }: { done: boolean; label: string; onClick?: () => void }) {
@@ -68,6 +71,7 @@ export function HabitChecklist({
     showSession = false,
     sessionDone = false,
     compact = false,
+    href,
 }: HabitChecklistProps) {
     const [state, setState] = useState(initial);
     const [, startTransition] = useTransition();
@@ -92,9 +96,19 @@ export function HabitChecklist({
             <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                     <span className="text-[0.9375rem] font-semibold">Habitudes</span>
-                    <span className="text-muted-foreground text-[0.8125rem] tabular-nums">
-                        {doneCount} / {total}
-                    </span>
+                    {href ? (
+                        <Link
+                            href={href}
+                            className="text-muted-foreground flex items-center gap-0.5 text-[0.8125rem] font-semibold tabular-nums"
+                        >
+                            {doneCount} / {total}
+                            <ChevronRight className="size-4" strokeWidth={2.4} />
+                        </Link>
+                    ) : (
+                        <span className="text-muted-foreground text-[0.8125rem] tabular-nums">
+                            {doneCount} / {total}
+                        </span>
+                    )}
                 </div>
                 <div className="flex flex-wrap gap-2">
                     {meta.map(({ field, label, auto }) => (

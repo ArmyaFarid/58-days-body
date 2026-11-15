@@ -23,7 +23,7 @@ export function ProgramPill({ programs, current }: ProgramPillProps) {
 
     function onChange(id: string) {
         if (id === ADD) {
-            router.push("/parametres#programmes");
+            router.push("/parametres/programmes");
             return;
         }
         if (id === selected) return;
