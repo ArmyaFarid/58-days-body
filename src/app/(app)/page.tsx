@@ -4,7 +4,7 @@ import { Flame, Play, Ruler, Settings, Trophy } from "lucide-react";
 import { DumbbellIcon } from "@/components/dumbbell-icon";
 import { Progress } from "@/components/ui/progress";
 import { HabitChecklist } from "@/components/habit-checklist";
-import { NutritionTracker } from "@/components/nutrition/nutrition-tracker";
+import { NutritionSummaryCard } from "@/components/nutrition/nutrition-summary-card";
 import { ProgramPill } from "@/components/program-pill";
 import { ResumeProgramButton } from "@/components/resume-program-button";
 import { WeightTile } from "@/components/weight-tile";
@@ -16,11 +16,10 @@ import { getWeights, getWeightForDate, computeTrend } from "@/lib/data/weight";
 import { getHabit } from "@/lib/data/habits";
 import { getSessionForDate, getCompletedSessionDates } from "@/lib/data/workout";
 import { getMeasurements } from "@/lib/data/measurements";
-import { getLoggedEntries, getFrequentFoodKeys, getNutritionHistory } from "@/lib/data/nutrition";
-import { getCustomFoods } from "@/lib/data/custom-foods";
-import { getCustomPresets } from "@/lib/data/custom-presets";
+import { getLoggedEntries } from "@/lib/data/nutrition";
+import { PRESETS, totalsOfEntries } from "@/lib/nutrition";
 import { habitMetaFor } from "@/lib/habits-meta";
-import { todayISO, fromISO, formatShort } from "@/lib/date";
+import { todayISO, fromISO, formatShort, TIMEZONE } from "@/lib/date";
 import { getProgram, parseSetCount } from "@/lib/program";
 import { computeWeeklyStreak } from "@/lib/program/streak";
 
@@ -50,10 +49,6 @@ export default async function DashboardPage() {
         workoutSession,
         nutritionGoals,
         foodEntries,
-        frequentKeys,
-        nutritionHistory,
-        customFoods,
-        customPresets,
         measurements,
         completedDates,
     ] = await Promise.all([
@@ -63,10 +58,6 @@ export default async function DashboardPage() {
         getSessionForDate(userId, program, today),
         getNutritionGoals(userId),
         getLoggedEntries(userId, today),
-        getFrequentFoodKeys(userId),
-        getNutritionHistory(userId),
-        getCustomFoods(),
-        getCustomPresets(),
         program.features.measurementsPrimary ? getMeasurements(userId) : Promise.resolve([]),
         getCompletedSessionDates(userId, program, startDate),
     ]);
@@ -295,24 +286,19 @@ export default async function DashboardPage() {
         </section>
     );
 
+    // Repas proposé selon l'heure locale : matin avant 15 h, soir ensuite.
+    const hour = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", timeZone: TIMEZONE }).format(new Date()));
+    const preset = PRESETS.find((p) => p.key === (hour < 15 ? "matin" : "soir")) ?? PRESETS[0];
+    const nutritionTotals = totalsOfEntries(foodEntries);
     const nutritionCard = (
-        <section className="bg-card flex flex-col gap-3 rounded-[1.25rem] p-4">
-            <span className="text-[0.9375rem] font-semibold">Nutrition</span>
-            <NutritionTracker
-                today={today}
-                proteinGoal={nutritionGoals.proteinGoal}
-                calorieGoal={nutritionGoals.calorieGoal}
-                fatGoal={nutritionGoals.fatGoal}
-                initialEntries={foodEntries}
-                initialCustomFoods={customFoods}
-                initialCustomPresets={customPresets}
-                frequentKeys={frequentKeys}
-                history={nutritionHistory}
-            />
-            {program.nutritionNote ? (
-                <p className="text-muted-foreground border-t pt-3 text-xs leading-relaxed">{program.nutritionNote}</p>
-            ) : null}
-        </section>
+        <NutritionSummaryCard
+            date={today}
+            calories={nutritionTotals.calories}
+            protein={nutritionTotals.protein}
+            calorieGoal={nutritionGoals.calorieGoal}
+            proteinGoal={nutritionGoals.proteinGoal}
+            preset={{ key: preset.key, label: preset.label }}
+        />
     );
 
     return (

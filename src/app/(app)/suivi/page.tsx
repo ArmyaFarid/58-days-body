@@ -1,104 +1,119 @@
-import { startOfWeek, format } from "date-fns";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { QuickWeight } from "@/components/quick-weight";
-import { WeightChart, type WeightPoint } from "@/components/tracking/weight-chart";
+import Link from "next/link";
+import { BarChart3 } from "lucide-react";
+import { WeightTrendChart } from "@/components/tracking/weight-trend-chart";
+import { WeighInCard } from "@/components/tracking/weigh-in-card";
 import { PhotosView } from "@/components/tracking/photos-view";
 import { MeasurementsView } from "@/components/tracking/measurements-view";
 import { PerfHistoryView } from "@/components/tracking/perf-history-view";
+import { NutritionDay } from "@/components/nutrition/nutrition-day";
 import { SuiviTabs, type SuiviTab } from "./suivi-tabs";
 import { getSession } from "@/lib/auth";
-import { getWeights, getWeightForDate, computeWeeklyAverages, computeTrend } from "@/lib/data/weight";
+import { getWeights, getWeightForDate, computeTrend } from "@/lib/data/weight";
 import { getPhotos } from "@/lib/data/photos";
-import { getActiveProgram } from "@/lib/data/user-programs";
+import { getActiveProgram, scheduleContext, type UserProgram } from "@/lib/data/user-programs";
 import { getMeasurements, getMeasurementForDate } from "@/lib/data/measurements";
 import { getAllExerciseHistories } from "@/lib/data/workout";
+import { getNutritionGoals } from "@/lib/data/settings";
+import { getLoggedEntries, getFrequentFoodKeys } from "@/lib/data/nutrition";
+import { getCustomFoods } from "@/lib/data/custom-foods";
+import { getCustomPresets } from "@/lib/data/custom-presets";
 import { getExerciseName, TRACTION_KEYS, type Program } from "@/lib/program";
-import { todayISO, fromISO } from "@/lib/date";
+import { todayISO } from "@/lib/date";
 
-async function PoidsSection({ userId, program }: { userId: number; program: Program }) {
+function kg(n: number): string {
+    return n.toFixed(1).replace(".", ",");
+}
+
+async function PoidsSection({ userId, program, row }: { userId: number; program: Program; row: UserProgram }) {
     const today = todayISO();
-    const [weights, todayWeight] = await Promise.all([
-        getWeights(userId),
-        getWeightForDate(userId, today),
-    ]);
+    const [weights, todayWeight] = await Promise.all([getWeights(userId), getWeightForDate(userId, today)]);
     const trend = computeTrend(weights, program.trend);
-
-    const weekly = computeWeeklyAverages(weights);
-    const avgByWeek = new Map(weekly.map((w) => [w.weekStart, w.avg]));
-    const chartData: WeightPoint[] = weights.map((w) => ({
-        date: w.date,
-        weight: w.weightKg,
-        weekAvg:
-            avgByWeek.get(format(startOfWeek(fromISO(w.date), { weekStartsOn: 1 }), "yyyy-MM-dd")) ??
-            null,
-    }));
-
     const delta = trend.deltaPerWeek;
+    const current = trend.currentWeekAvg ?? trend.latest?.weightKg ?? null;
+
+    const target = program.features.targetWeight ? row.targetWeightKg : null;
+    const start = weights[0]?.weightKg ?? null;
+    const progress =
+        target != null && start != null && current != null && target !== start
+            ? Math.min(100, Math.max(0, ((current - start) / (target - start)) * 100))
+            : null;
 
     return (
-        <div className="flex flex-col gap-4">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">Ajouter une pesée</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <QuickWeight date={today} initial={todayWeight} allowDateChange />
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">Tendance</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-3">
-                    <div className="flex items-baseline gap-6">
-                        <div>
-                            <p className="text-muted-foreground text-xs">Moy. cette semaine</p>
-                            <p className="text-2xl font-semibold">
-                                {trend.currentWeekAvg != null
-                                    ? `${trend.currentWeekAvg.toFixed(1)} kg`
-                                    : "—"}
-                            </p>
+        <div className="flex flex-col gap-4 pb-4">
+            <section className="bg-card flex flex-col gap-3.5 rounded-3xl p-5">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col gap-1">
+                        <span className="text-muted-foreground text-xs font-bold tracking-[0.0625rem] uppercase">
+                            {trend.currentWeekAvg != null ? "Moyenne de la semaine" : "Dernière pesée"}
+                        </span>
+                        <span className="font-heading text-[2.75rem] leading-none font-bold tracking-[-0.0625rem] tabular-nums">
+                            {current != null ? kg(current) : "—"}
+                            <span className="text-muted-foreground text-lg tracking-normal"> kg</span>
+                        </span>
+                    </div>
+                    {delta != null ? (
+                        <span className="bg-brand text-brand-foreground shrink-0 rounded-lg px-2.5 py-[0.3125rem] text-[0.8125rem] font-bold whitespace-nowrap">
+                            {delta > 0 ? "+" : delta < 0 ? "−" : ""}
+                            {kg(Math.abs(delta))} kg / sem.
+                        </span>
+                    ) : null}
+                </div>
+                {progress != null ? (
+                    <div className="flex flex-col gap-1.5">
+                        <div className="flex justify-between text-[0.8125rem]">
+                            <span className="text-muted-foreground">Départ {kg(start!)} kg</span>
+                            <span className="font-semibold">Objectif {kg(target!)} kg</span>
                         </div>
-                        <div>
-                            <p className="text-muted-foreground text-xs">Variation / sem.</p>
-                            <p className="flex items-center gap-1 text-2xl font-semibold">
-                                {delta != null ? (
-                                    <>
-                                        {delta > 0 ? "+" : ""}
-                                        {delta.toFixed(2)} kg
-                                        {delta > 0.05 ? (
-                                            <TrendingUp className="size-4 text-emerald-500" />
-                                        ) : delta < -0.05 ? (
-                                            <TrendingDown className="size-4 text-red-500" />
-                                        ) : (
-                                            <Minus className="text-muted-foreground size-4" />
-                                        )}
-                                    </>
-                                ) : (
-                                    "—"
-                                )}
-                            </p>
+                        <div className="bg-border h-2 overflow-hidden rounded-full">
+                            <div className="bg-brand h-full rounded-full" style={{ width: `${progress}%` }} />
                         </div>
                     </div>
-                    {trend.suggestionText ? (
-                        <p className="bg-muted rounded-lg p-3 text-sm">{trend.suggestionText}</p>
-                    ) : (
-                        <p className="text-muted-foreground text-sm">{program.trend.targetText}</p>
-                    )}
-                </CardContent>
-            </Card>
+                ) : null}
+                <p className="text-muted-foreground text-[0.8125rem] leading-[1.4]">
+                    {trend.suggestionText ?? program.trend.targetText}
+                </p>
+            </section>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">Courbe</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <WeightChart data={chartData} />
-                </CardContent>
-            </Card>
+            <WeightTrendChart today={today} points={weights.map((w) => ({ date: w.date, kg: w.weightKg }))} />
+
+            <WeighInCard today={today} todayWeight={todayWeight} />
         </div>
+    );
+}
+
+async function NutritionSection({
+    userId,
+    program,
+    date,
+    openPicker,
+}: {
+    userId: number;
+    program: Program;
+    date: string;
+    openPicker: boolean;
+}) {
+    const today = todayISO();
+    const [goals, entries, frequentKeys, customFoods, customPresets] = await Promise.all([
+        getNutritionGoals(userId),
+        getLoggedEntries(userId, date),
+        getFrequentFoodKeys(userId),
+        getCustomFoods(),
+        getCustomPresets(),
+    ]);
+    return (
+        <NutritionDay
+            key={date}
+            date={date}
+            today={today}
+            proteinGoal={goals.proteinGoal}
+            calorieGoal={goals.calorieGoal}
+            fatGoal={program.features.trackFat ? goals.fatGoal : null}
+            initialEntries={entries}
+            initialCustomFoods={customFoods}
+            initialCustomPresets={customPresets}
+            frequentKeys={frequentKeys}
+            openPicker={openPicker}
+        />
     );
 }
 
@@ -109,77 +124,90 @@ async function PhotosSection({ userId, startDate }: { userId: number; startDate:
 
 async function MensurationsSection({ userId, program }: { userId: number; program: Program }) {
     const today = todayISO();
-    const [measurements, initial] = await Promise.all([
-        getMeasurements(userId),
-        getMeasurementForDate(userId, today),
-    ]);
+    const [measurements, initial] = await Promise.all([getMeasurements(userId), getMeasurementForDate(userId, today)]);
     return (
-        <div className="flex flex-col gap-4">
-            {program.trackingNote ? (
-                <Card className="border-primary/30 bg-primary/5">
-                    <CardContent className="py-3 text-sm">{program.trackingNote}</CardContent>
-                </Card>
-            ) : null}
-            <MeasurementsView
-                today={today}
-                initial={initial}
-                measurements={measurements}
-                fields={program.measurementFields}
-            />
-        </div>
+        <MeasurementsView
+            today={today}
+            initial={initial}
+            measurements={measurements}
+            fields={program.measurementFields}
+            note={program.trackingNote}
+        />
     );
 }
 
 async function HistoriqueSection({ userId, program }: { userId: number; program: Program }) {
     const histories = await getAllExerciseHistories(userId, program);
     const exercises = Object.keys(histories).map((key) => ({ key, name: getExerciseName(key) }));
-    return (
-        <PerfHistoryView
-            exercises={exercises}
-            histories={histories}
-            tractionKeys={TRACTION_KEYS}
-        />
-    );
+    return <PerfHistoryView exercises={exercises} histories={histories} tractionKeys={TRACTION_KEYS} />;
 }
 
 export default async function SuiviPage({
     searchParams,
 }: {
-    searchParams: Promise<{ tab?: string }>;
+    searchParams: Promise<{ tab?: string; date?: string; noter?: string }>;
 }) {
-    const { tab } = await searchParams;
+    const { tab, date, noter } = await searchParams;
     const { userId } = (await getSession())!;
     const { program, row } = (await getActiveProgram(userId))!;
-    const { features } = program;
+    const today = todayISO();
+    const nutritionDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) && date <= today ? date : today;
 
-    const poidsTab: SuiviTab = {
-        value: "poids",
-        label: "Poids",
-        content: <PoidsSection userId={userId} program={program} />,
-    };
-    const mensurationsTab: SuiviTab = {
-        value: "mensurations",
-        label: "Mensur.",
-        content: (
-            <MensurationsSection userId={userId} program={program} />
-        ),
-    };
-    const perfTab: SuiviTab = {
-        value: "historique",
-        label: "Perf",
-        content: <HistoriqueSection userId={userId} program={program} />,
-    };
-    const photosTab: SuiviTab = {
-        value: "photos",
-        label: "Photos",
-        content: <PhotosSection userId={userId} startDate={row.startDate} />,
-    };
+    const dayNumber = scheduleContext(row, today).dayNumber;
+    const dayInfo =
+        program.length != null && dayNumber >= 1 ? (
+            <span className="text-muted-foreground text-[0.8125rem]">
+                Jour {Math.min(dayNumber, program.length)} sur {program.length}
+            </span>
+        ) : null;
 
-    // Mensurations en premier pour les programmes qui en font l'indicateur clé ;
-    // les photos ne sont proposées que si le programme les active.
-    const tabs: SuiviTab[] = features.measurementsPrimary
-        ? [mensurationsTab, poidsTab, perfTab]
-        : [poidsTab, photosTab, mensurationsTab, perfTab];
+    const tabs: SuiviTab[] = [
+        {
+            value: "poids",
+            label: "Poids",
+            headerRight: dayInfo,
+            content: <PoidsSection userId={userId} program={program} row={row} />,
+        },
+        {
+            value: "nutrition",
+            label: "Nutrition",
+            headerRight: (
+                <Link
+                    href="/suivi/nutrition/historique"
+                    className="bg-card flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold"
+                >
+                    <BarChart3 className="size-3.5" strokeWidth={2.2} />
+                    Historique
+                </Link>
+            ),
+            content: (
+                <NutritionSection userId={userId} program={program} date={nutritionDate} openPicker={noter === "1"} />
+            ),
+        },
+        {
+            value: "mensurations",
+            label: "Mesures",
+            headerRight: dayInfo,
+            content: <MensurationsSection userId={userId} program={program} />,
+        },
+        {
+            value: "historique",
+            label: "Perf",
+            headerRight: dayInfo,
+            content: <HistoriqueSection userId={userId} program={program} />,
+        },
+    ];
+    // Les photos ne sont proposées que pour les programmes qui les utilisent.
+    if (!program.features.measurementsPrimary) {
+        tabs.push({
+            value: "photos",
+            label: "Photos",
+            headerRight: dayInfo,
+            content: <PhotosSection userId={userId} startDate={row.startDate} />,
+        });
+    }
 
-    return <SuiviTabs initialTab={tab} tabs={tabs} />;
+    // Programmes dont les mensurations sont l'indicateur clé : on ouvre sur « Mesures ».
+    const defaultTab = program.features.measurementsPrimary ? "mensurations" : undefined;
+    return <SuiviTabs initialTab={tab ?? defaultTab} tabs={tabs} />;
 }

@@ -33,6 +33,8 @@ interface MealPresetDialogProps {
     onCreated: (preset: CustomPresetView) => void;
     onUpdated: (preset: CustomPresetView) => void;
     onDeleted: (id: number) => void;
+    /** Bouton d'ouverture (défaut : bouton « Repas »). */
+    trigger?: React.ReactElement;
 }
 
 export function MealPresetDialog({
@@ -41,6 +43,7 @@ export function MealPresetDialog({
     onCreated,
     onUpdated,
     onDeleted,
+    trigger,
 }: MealPresetDialogProps) {
     const [open, setOpen] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -145,10 +148,12 @@ export function MealPresetDialog({
         >
             <DialogTrigger
                 render={
-                    <Button type="button" variant="outline" className="h-11">
-                        <Plus className="size-4" />
-                        Repas
-                    </Button>
+                    trigger ?? (
+                        <Button type="button" variant="outline" className="h-11">
+                            <Plus className="size-4" />
+                            Repas
+                        </Button>
+                    )
                 }
             />
             <DialogContent className="max-h-[85vh] max-w-sm overflow-y-auto">

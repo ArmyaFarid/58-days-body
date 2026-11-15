@@ -28,6 +28,8 @@ interface AddFoodDialogProps {
     onAdded: (food: Food) => void;
     onUpdated: (food: Food) => void;
     onDeleted: (key: string) => void;
+    /** Bouton d'ouverture (défaut : bouton pleine largeur). */
+    trigger?: React.ReactElement;
 }
 
 export function AddFoodDialog({
@@ -36,6 +38,7 @@ export function AddFoodDialog({
     onAdded,
     onUpdated,
     onDeleted,
+    trigger,
 }: AddFoodDialogProps) {
     const [open, setOpen] = useState(false);
     const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -136,10 +139,12 @@ export function AddFoodDialog({
         >
             <DialogTrigger
                 render={
-                    <Button type="button" variant="outline" className="h-10 w-full">
-                        <Plus className="size-4" />
-                        Ajouter / modifier un aliment
-                    </Button>
+                    trigger ?? (
+                        <Button type="button" variant="outline" className="h-10 w-full">
+                            <Plus className="size-4" />
+                            Ajouter / modifier un aliment
+                        </Button>
+                    )
                 }
             />
             <DialogContent className="max-h-[85vh] max-w-sm overflow-y-auto">

@@ -48,7 +48,7 @@ export function WeightTile({ date, todayWeight, latest, deltaPerWeek }: WeightTi
                     <DialogHeader>
                         <DialogTitle>Pesée du matin</DialogTitle>
                     </DialogHeader>
-                    <QuickWeight date={date} initial={todayWeight} />
+                    <QuickWeight date={date} initial={todayWeight} onSaved={() => setOpen(false)} />
                 </DialogContent>
             </Dialog>
         </div>

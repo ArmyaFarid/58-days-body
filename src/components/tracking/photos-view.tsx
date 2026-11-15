@@ -4,15 +4,11 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import imageCompression from "browser-image-compression";
 import { toast } from "sonner";
-import { Camera, Loader2, Trash2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { differenceInCalendarDays } from "date-fns";
+import { Check, Loader2, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { POSES, poseLabel } from "@/lib/photos-meta";
 import { deletePhotoAction } from "@/lib/actions";
-import { differenceInCalendarDays } from "date-fns";
 import { formatShort, fromISO } from "@/lib/date";
 import type { Photo } from "@/lib/data/photos";
 
@@ -22,20 +18,20 @@ interface PhotosViewProps {
     photos: Photo[];
 }
 
-// Libellé d'une photo : jour réel du programme (dérivé de la date de début) + date.
-function photoLabel(startDate: string | null, date: string): string {
-    if (!startDate) return formatShort(date);
+// Libellé court d'une photo : jour du programme (« J23 ») ou date.
+function dayTag(startDate: string | null, date: string, today: string): string {
+    const when = date === today ? "auj." : formatShort(date);
+    if (!startDate) return when;
     const day = differenceInCalendarDays(fromISO(date), fromISO(startDate)) + 1;
-    return day >= 1 ? `Jour ${day} · ${formatShort(date)}` : formatShort(date);
+    return day >= 1 ? `J${day} · ${when}` : when;
 }
 
 export function PhotosView({ today, startDate, photos }: PhotosViewProps) {
     const router = useRouter();
     const fileRef = useRef<HTMLInputElement>(null);
     const poseRef = useRef<string>(POSES[0].key);
-    const [uploading, setUploading] = useState(false);
+    const [uploading, setUploading] = useState<string | null>(null);
     const [comparePose, setComparePose] = useState(POSES[0].key);
-    const [date, setDate] = useState(today);
 
     function pick(pose: string) {
         poseRef.current = pose;
@@ -46,7 +42,7 @@ export function PhotosView({ today, startDate, photos }: PhotosViewProps) {
         const file = e.target.files?.[0];
         e.target.value = "";
         if (!file) return;
-        setUploading(true);
+        setUploading(poseRef.current);
         try {
             // Force le JPEG : évite les soucis de HEIC (iPhone) et garantit un
             // type accepté par la route d'upload.
@@ -56,7 +52,7 @@ export function PhotosView({ today, startDate, photos }: PhotosViewProps) {
                 useWebWorker: true,
                 fileType: "image/jpeg",
             });
-            const params = new URLSearchParams({ pose: poseRef.current, date });
+            const params = new URLSearchParams({ pose: poseRef.current, date: today });
             const res = await fetch(`/api/photos/upload?${params}`, {
                 method: "POST",
                 headers: { "Content-Type": "image/jpeg" },
@@ -72,7 +68,7 @@ export function PhotosView({ today, startDate, photos }: PhotosViewProps) {
             console.error("Upload photo:", err);
             toast.error(err instanceof Error ? err.message : "Upload impossible.");
         } finally {
-            setUploading(false);
+            setUploading(null);
         }
     }
 
@@ -86,151 +82,157 @@ export function PhotosView({ today, startDate, photos }: PhotosViewProps) {
         }
     }
 
-    const byPose = (pose: string) =>
-        photos.filter((p) => p.pose === pose).sort((a, b) => a.date.localeCompare(b.date));
-    const first = byPose(comparePose)[0];
-    const last = byPose(comparePose).at(-1);
-
-    // Galerie groupée par date (récent d'abord).
+    const byPose = photos.filter((p) => p.pose === comparePose).sort((a, b) => a.date.localeCompare(b.date));
+    const first = byPose[0];
+    const last = byPose.at(-1);
+    const todayPoses = new Set(photos.filter((p) => p.date === today).map((p) => p.pose));
     const dates = [...new Set(photos.map((p) => p.date))].sort((a, b) => b.localeCompare(a));
 
     return (
-        <div className="flex flex-col gap-4">
-            <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                onChange={onFile}
-                className="hidden"
-            />
+        <div className="flex flex-col gap-4 pb-4">
+            <input ref={fileRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">Ajouter une photo</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-3">
-                    <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="photo-date" className="text-xs">
-                            Date
-                        </Label>
-                        <Input
-                            id="photo-date"
-                            type="date"
-                            max={today}
-                            value={date}
-                            onChange={(e) => setDate(e.target.value)}
-                            className="h-10"
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                        {POSES.map((p) => (
-                        <Button
+            <section className="bg-card flex flex-col gap-3 rounded-3xl p-3">
+                <div className="grid grid-cols-2 gap-2">
+                    <ComparePanel
+                        photo={first ?? null}
+                        tag={first ? dayTag(startDate, first.date, today) : null}
+                        empty="Pas encore de photo"
+                    />
+                    <ComparePanel
+                        photo={last && last.id !== first?.id ? last : null}
+                        tag={last && last.id !== first?.id ? dayTag(startDate, last.date, today) : null}
+                        empty="Ajoute une 2ᵉ photo pour comparer"
+                        latest
+                    />
+                </div>
+                <div className="-mx-3 flex gap-1.5 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {POSES.map((p) => (
+                        <button
                             key={p.key}
-                            variant="outline"
-                            className="h-11 justify-start"
-                            disabled={uploading}
-                            onClick={() => pick(p.key)}
-                        >
-                            {uploading ? (
-                                <Loader2 className="size-4 animate-spin" />
-                            ) : (
-                                <Camera className="size-4" />
+                            type="button"
+                            onClick={() => setComparePose(p.key)}
+                            aria-pressed={comparePose === p.key}
+                            className={cn(
+                                "h-9 shrink-0 rounded-full px-3 text-xs font-semibold whitespace-nowrap",
+                                comparePose === p.key ? "bg-foreground text-background" : "border",
                             )}
+                        >
                             {p.label}
-                        </Button>
-                        ))}
-                    </div>
-                </CardContent>
-            </Card>
+                        </button>
+                    ))}
+                </div>
+            </section>
 
-            {photos.length > 0 ? (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base">Comparaison</CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex flex-col gap-3">
-                        <div className="flex flex-wrap gap-1.5">
-                            {POSES.map((p) => (
-                                <button
-                                    key={p.key}
-                                    onClick={() => setComparePose(p.key)}
-                                    className={cn(
-                                        "rounded-full px-3 py-1 text-sm transition-colors",
-                                        comparePose === p.key
-                                            ? "bg-primary text-primary-foreground"
-                                            : "bg-muted",
-                                    )}
-                                >
-                                    {p.label}
-                                </button>
-                            ))}
-                        </div>
-                        {first ? (
-                            <div className="grid grid-cols-2 gap-2">
-                                <Figure
-                                    label={photoLabel(startDate, first.date)}
-                                    url={`/api/photos/${first.id}`}
-                                />
-                                {last && last.id !== first.id ? (
-                                    <Figure
-                                        label={photoLabel(startDate, last.date)}
-                                        url={`/api/photos/${last.id}`}
-                                    />
-                                ) : (
-                                    <div className="text-muted-foreground flex items-center justify-center rounded-lg border border-dashed text-center text-xs">
-                                        Ajoute une 2ᵉ photo pour comparer
-                                    </div>
+            <section className="bg-card flex flex-col gap-3 rounded-[1.25rem] p-4">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-[0.9375rem] font-semibold">Photos du jour</h2>
+                    <span className="text-muted-foreground text-[0.8125rem] tabular-nums">
+                        {todayPoses.size} / {POSES.length}
+                    </span>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                    {POSES.map((p) => {
+                        const done = todayPoses.has(p.key);
+                        return (
+                            <button
+                                key={p.key}
+                                type="button"
+                                onClick={() => pick(p.key)}
+                                disabled={uploading != null}
+                                aria-label={`${done ? "Remplacer" : "Prendre"} la photo ${p.label}`}
+                                className={cn(
+                                    "flex h-[5.25rem] flex-col items-center justify-center gap-1.5 rounded-[0.875rem] p-1 text-center text-[0.625rem] leading-tight font-semibold",
+                                    done
+                                        ? "bg-brand text-brand-foreground"
+                                        : "text-muted-foreground border-[1.5px] border-dashed border-muted-foreground/40",
                                 )}
-                            </div>
-                        ) : (
-                            <p className="text-muted-foreground text-sm">
-                                Aucune photo « {poseLabel(comparePose)} » pour l&apos;instant.
-                            </p>
-                        )}
-                    </CardContent>
-                </Card>
-            ) : null}
+                            >
+                                {uploading === p.key ? (
+                                    <Loader2 className="size-5 animate-spin" />
+                                ) : done ? (
+                                    <Check className="size-5" strokeWidth={3} />
+                                ) : (
+                                    <Plus className="size-5" strokeWidth={2.4} />
+                                )}
+                                {p.label}
+                            </button>
+                        );
+                    })}
+                </div>
+                <span className="text-muted-foreground text-xs">
+                    Même lumière, même heure : la comparaison sera juste.
+                </span>
+            </section>
 
-            <div className="flex flex-col gap-4">
-                {dates.map((date) => (
-                    <div key={date}>
-                        <p className="text-muted-foreground mb-2 text-sm font-medium">
-                            {formatShort(date)}
-                        </p>
-                        <div className="grid grid-cols-2 gap-2">
-                            {photos
-                                .filter((p) => p.date === date)
-                                .map((p) => (
-                                    <div key={p.id} className="group relative">
-                                        <Figure label={poseLabel(p.pose)} url={`/api/photos/${p.id}`} />
-                                        <button
-                                            onClick={() => onDelete(p.id)}
-                                            className="bg-background/80 absolute right-1.5 top-1.5 rounded-md p-1.5 backdrop-blur"
-                                            aria-label="Supprimer"
-                                        >
-                                            <Trash2 className="text-destructive size-4" />
-                                        </button>
-                                    </div>
-                                ))}
+            {dates.length > 0 ? (
+                <section className="flex flex-col gap-3">
+                    <h2 className="text-[0.9375rem] font-semibold">Historique</h2>
+                    {dates.map((date) => (
+                        <div key={date} className="flex flex-col gap-2">
+                            <span className="text-muted-foreground text-[0.8125rem]">
+                                {dayTag(startDate, date, today)}
+                            </span>
+                            <div className="grid grid-cols-4 gap-2">
+                                {photos
+                                    .filter((p) => p.date === date)
+                                    .map((p) => (
+                                        <div key={p.id} className="relative">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img
+                                                src={`/api/photos/${p.id}`}
+                                                alt={poseLabel(p.pose)}
+                                                loading="lazy"
+                                                className="aspect-[3/4] w-full rounded-xl object-cover"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => onDelete(p.id)}
+                                                className="bg-background/80 absolute top-1 right-1 rounded-lg p-1.5 backdrop-blur"
+                                                aria-label={`Supprimer la photo ${poseLabel(p.pose)}`}
+                                            >
+                                                <Trash2 className="text-destructive size-3.5" />
+                                            </button>
+                                        </div>
+                                    ))}
+                            </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </section>
+            ) : null}
         </div>
     );
 }
 
-function Figure({ label, url }: { label: string; url: string }) {
+function ComparePanel({
+    photo,
+    tag,
+    empty,
+    latest = false,
+}: {
+    photo: Photo | null;
+    tag: string | null;
+    empty: string;
+    latest?: boolean;
+}) {
     return (
-        <figure className="flex flex-col gap-1">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-                src={url}
-                alt={label}
-                loading="lazy"
-                className="aspect-[3/4] w-full rounded-lg object-cover"
-            />
-            <figcaption className="text-muted-foreground text-xs">{label}</figcaption>
-        </figure>
+        <div className="bg-muted relative flex h-[14.75rem] items-center justify-center overflow-hidden rounded-2xl">
+            {photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`/api/photos/${photo.id}`} alt={tag ?? ""} className="size-full object-cover" />
+            ) : (
+                <span className="text-muted-foreground px-3 text-center text-xs">{empty}</span>
+            )}
+            {tag ? (
+                <span
+                    className={cn(
+                        "absolute top-2.5 left-2.5 rounded-lg px-2 py-1 text-xs font-bold",
+                        latest ? "bg-brand text-brand-foreground" : "bg-background/80",
+                    )}
+                >
+                    {tag}
+                </span>
+            ) : null}
+        </div>
     );
 }

@@ -14,9 +14,10 @@ interface QuickWeightProps {
     initial: number | null;
     /** Affiche un sélecteur de date pour saisir une pesée d'un jour passé. */
     allowDateChange?: boolean;
+    onSaved?: () => void;
 }
 
-export function QuickWeight({ date, initial, allowDateChange }: QuickWeightProps) {
+export function QuickWeight({ date, initial, allowDateChange, onSaved }: QuickWeightProps) {
     const router = useRouter();
     const [value, setValue] = useState(initial != null ? String(initial) : "");
     const [day, setDay] = useState(date);
@@ -32,6 +33,7 @@ export function QuickWeight({ date, initial, allowDateChange }: QuickWeightProps
             try {
                 await upsertWeightAction(day, kg);
                 toast.success("Pesée enregistrée.");
+                onSaved?.();
                 router.refresh();
             } catch {
                 toast.error("Échec de l'enregistrement.");
