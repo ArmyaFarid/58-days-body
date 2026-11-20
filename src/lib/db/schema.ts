@@ -240,3 +240,20 @@ export const measurements = pgTable(
     },
     (t) => [unique("measurements_user_date").on(t.userId, t.date)],
 );
+
+// Journal timing (programme « plancher-pelvien ») : notes privées, lues
+// uniquement par leur auteur. Plusieurs notes possibles par jour.
+export const timingJournal = pgTable("timing_journal", {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    // Niveau d'excitation le plus haut atteint, 1–10.
+    level: integer("level").notNull(),
+    signals: jsonb("signals").$type<string[]>().notNull().default([]),
+    // « none » (pas tentée) | « ok » (réussie) | « ko » (ratée).
+    outcome: text("outcome").notNull().default("none"),
+    note: text("note"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+});

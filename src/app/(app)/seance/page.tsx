@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { differenceInCalendarDays } from "date-fns";
 import { Moon } from "lucide-react";
 import { WorkoutView } from "@/components/workout/workout-view";
+import { PelvicDayView } from "@/components/pelvic/pelvic-day-view";
 import type { ExerciseBlock, LoggedSet } from "@/components/workout/types";
 import { getSession as getAuthSession } from "@/lib/auth";
 import { getActiveProgram, scheduleContext } from "@/lib/data/user-programs";
@@ -12,7 +14,16 @@ import {
     getCompletedSessionDates,
     getBestReps,
 } from "@/lib/data/workout";
+import { getLastTimingEntry } from "@/lib/data/timing-journal";
 import { computeWeeklyStreak } from "@/lib/program/streak";
+import {
+    PELVIC_BLOCKS,
+    PELVIC_HOLD_KEY,
+    POSITION_LABELS,
+    pelvicPosition,
+    pelvicSteps,
+    timingStage,
+} from "@/lib/program/plancher-pelvien";
 import { todayISO, fromISO } from "@/lib/date";
 import {
     parseSetCount,
@@ -87,6 +98,47 @@ export default async function SeancePage({
               trainingPhase?.key ?? phase?.key ?? "libre",
           );
     const todayLogs = wSession ? await getSetLogsForSession(wSession.id) : [];
+
+    const dayLabel = [
+        new Intl.DateTimeFormat("fr-CA", { weekday: "short", day: "numeric", month: "short" }).format(
+            fromISO(selectedDate),
+        ),
+        `Jour ${ctx.dayNumber}`,
+        (trainingPhase?.shortLabel ?? phase?.shortLabel)?.split(" — ")[0],
+    ]
+        .filter(Boolean)
+        .join(" · ");
+
+    // Programme à blocs quotidiens (plancher pelvien) : 3 blocs guidés au lieu d'une séance.
+    if (program.features.dailyBlocks) {
+        const position = pelvicPosition(ctx.dayNumber);
+        const holdsToday = todayLogs.filter((l) => l.exerciseKey === PELVIC_HOLD_KEY).map((l) => l.reps ?? 0);
+        const before = isFuture ? {} : await getBestReps(userId, program, [PELVIC_HOLD_KEY], selectedDate);
+        const record = Math.max(before[PELVIC_HOLD_KEY] ?? 0, ...holdsToday) || null;
+        const last = await getLastTimingEntry(userId);
+        const ago = last ? differenceInCalendarDays(fromISO(today), fromISO(last.date)) : 0;
+        return (
+            <PelvicDayView
+                today={today}
+                selectedDate={selectedDate}
+                sessionId={wSession?.id ?? null}
+                dayLabel={dayLabel}
+                doneAt={PELVIC_BLOCKS.map(
+                    (b) => todayLogs.find((l) => l.exerciseKey === b.key)?.notes ?? (todayLogs.some((l) => l.exerciseKey === b.key) ? "—" : null),
+                )}
+                steps={pelvicSteps(ctx.dayNumber)}
+                position={position}
+                positionLabel={POSITION_LABELS[position]}
+                record={record}
+                timing={timingStage(ctx.dayNumber)}
+                lastEntry={
+                    last
+                        ? `Dernière note : niveau ${last.level}, ${ago === 0 ? "aujourd’hui" : ago === 1 ? "hier" : `il y a ${ago} j`}`
+                        : null
+                }
+            />
+        );
+    }
 
     // Mode Internat : état figé sur la séance, sinon réglage global (aujourd'hui et après).
     const preference = await getInternatPreference(userId);
@@ -174,15 +226,7 @@ export default async function SeancePage({
             sessionId={wSession?.id ?? null}
             completed={wSession?.completed ?? false}
             title={session.title}
-            dayLabel={[
-                new Intl.DateTimeFormat("fr-CA", { weekday: "short", day: "numeric", month: "short" }).format(
-                    fromISO(selectedDate),
-                ),
-                `Jour ${ctx.dayNumber}`,
-                (trainingPhase?.shortLabel ?? phase?.shortLabel)?.split(" — ")[0],
-            ]
-                .filter(Boolean)
-                .join(" · ")}
+            dayLabel={dayLabel}
             showIntensification={program.features.intensification && phase?.key === "bloc2"}
             isCircuit={Boolean(session.isCircuit)}
             circuitNote={session.circuitNote}

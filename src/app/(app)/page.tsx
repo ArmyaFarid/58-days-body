@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { differenceInCalendarDays } from "date-fns";
-import { Flame, Play, Ruler, Settings, Trophy } from "lucide-react";
+import { Flame, Play, Ruler, Settings, Timer, Trophy } from "lucide-react";
 import { DumbbellIcon } from "@/components/dumbbell-icon";
 import { Progress } from "@/components/ui/progress";
 import { HabitChecklist } from "@/components/habit-checklist";
@@ -15,7 +15,7 @@ import { getNutritionGoals } from "@/lib/data/settings";
 import { getActiveProgram, scheduleContext } from "@/lib/data/user-programs";
 import { getWeights, getWeightForDate, computeTrend } from "@/lib/data/weight";
 import { getHabit } from "@/lib/data/habits";
-import { getSessionForDate, getCompletedSessionDates } from "@/lib/data/workout";
+import { getSessionForDate, getCompletedSessionDates, getSetLogsForSession, getBestReps } from "@/lib/data/workout";
 import { getMeasurements } from "@/lib/data/measurements";
 import { getLoggedEntries } from "@/lib/data/nutrition";
 import { PRESETS, totalsOfEntries } from "@/lib/nutrition";
@@ -23,6 +23,7 @@ import { habitMetaFor } from "@/lib/habits-meta";
 import { todayISO, fromISO, formatShort, TIMEZONE } from "@/lib/date";
 import { getProgram, parseSetCount } from "@/lib/program";
 import { computeWeeklyStreak } from "@/lib/program/streak";
+import { PELVIC_BLOCKS, PELVIC_HOLD_KEY, blockMinutes, pelvicSteps } from "@/lib/program/plancher-pelvien";
 
 function measurementIsDue(dates: string[], today: string): boolean {
     if (dates.length === 0) return true;
@@ -106,6 +107,17 @@ export default async function DashboardPage() {
     }
 
     const isTrainingToday = training && session != null && session.dayType !== "repos";
+    // Programme à blocs quotidiens : blocs faits aujourd'hui et record de tenue.
+    const blocksMode = program.features.dailyBlocks === true;
+    const [todayLogs, holdBest] = blocksMode
+        ? await Promise.all([
+              workoutSession ? getSetLogsForSession(workoutSession.id) : Promise.resolve([]),
+              getBestReps(userId, program, [PELVIC_HOLD_KEY], "9999-12-31"),
+          ])
+        : [[], {}];
+    const blocksDone = PELVIC_BLOCKS.filter((b) => todayLogs.some((l) => l.exerciseKey === b.key)).length;
+    const nextBlock = PELVIC_BLOCKS[blocksDone] ?? null;
+    const holdRecord = (holdBest as Record<string, number>)[PELVIC_HOLD_KEY] ?? null;
     const setTotal = isTrainingToday ? session.exercises.reduce((acc, ex) => acc + parseSetCount(ex.sets), 0) : 0;
     // Estimation grossière : ~2 min par série, repos compris.
     const minutes = Math.max(5, Math.round((setTotal * 2) / 5) * 5);
@@ -198,7 +210,7 @@ export default async function DashboardPage() {
             <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-col gap-1">
                     <span className="text-xs font-bold tracking-[0.0625rem] uppercase opacity-75">
-                        {sessionDone ? "Séance faite" : "Séance du jour"}
+                        {blocksMode ? (sessionDone ? "Blocs faits" : "Blocs du jour") : sessionDone ? "Séance faite" : "Séance du jour"}
                     </span>
                     <span className="font-heading text-[1.875rem] leading-none font-bold tracking-[-0.03125rem]">
                         {session.title}
@@ -208,16 +220,33 @@ export default async function DashboardPage() {
                 <DumbbellIcon className="size-14 shrink-0" strokeWidth={1.6} />
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-[0.8125rem] font-semibold">
-                <span>{session.exercises.length} exercices</span>
-                <span>{setTotal} séries</span>
-                <span>≈ {minutes} min</span>
+                {blocksMode ? (
+                    <>
+                        <span>
+                            {blocksDone} / {PELVIC_BLOCKS.length} blocs faits
+                        </span>
+                        <span>≈ {blockMinutes(pelvicSteps(dayNumber))} min chacun</span>
+                    </>
+                ) : (
+                    <>
+                        <span>{session.exercises.length} exercices</span>
+                        <span>{setTotal} séries</span>
+                        <span>≈ {minutes} min</span>
+                    </>
+                )}
             </div>
             <Link
                 href="/seance"
                 className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-[#0e0f12] text-[1.0625rem] font-bold text-[#f4f5f7]"
             >
                 <Play className="size-5 fill-current" strokeWidth={0} aria-hidden />
-                {sessionDone ? "Revoir la séance" : "Démarrer la séance"}
+                {blocksMode
+                    ? nextBlock
+                        ? `Commencer le bloc ${nextBlock.short}`
+                        : "Revoir les blocs"
+                    : sessionDone
+                      ? "Revoir la séance"
+                      : "Démarrer la séance"}
             </Link>
         </section>
     ) : (
@@ -266,16 +295,35 @@ export default async function DashboardPage() {
                         {completedDates.length}
                     </span>
                     <span className="text-muted-foreground text-[0.8125rem]">
-                        {completedDates.length > 1 ? "séances faites" : "séance faite"} depuis le début
+                        {blocksMode
+                            ? completedDates.length > 1
+                                ? "jours complets"
+                                : "jour complet"
+                            : completedDates.length > 1
+                              ? "séances faites"
+                              : "séance faite"}{" "}
+                        depuis le début
                     </span>
                 </div>
             )}
-            <WeightTile
-                date={today}
-                todayWeight={todayWeight}
-                latest={trend.latest?.weightKg ?? null}
-                deltaPerWeek={trend.deltaPerWeek}
-            />
+            {blocksMode ? (
+                <div className="bg-card flex flex-col gap-2.5 rounded-[1.25rem] p-4">
+                    <Timer className="text-brand size-6" strokeWidth={2} />
+                    <span className="font-heading text-[1.625rem] leading-tight font-bold tabular-nums">
+                        {holdRecord != null ? `${holdRecord} s` : "—"}
+                    </span>
+                    <span className="text-muted-foreground text-[0.8125rem]">
+                        {holdRecord != null ? "record de tenue longue" : "tenue longue dès le jour 29"}
+                    </span>
+                </div>
+            ) : (
+                <WeightTile
+                    date={today}
+                    todayWeight={todayWeight}
+                    latest={trend.latest?.weightKg ?? null}
+                    deltaPerWeek={trend.deltaPerWeek}
+                />
+            )}
         </div>
     );
 
@@ -380,15 +428,15 @@ export default async function DashboardPage() {
             {seanceCard}
             {tiles}
             {milestones}
-            {habitsCard}
+            {meta.length > 0 || program.features.sessionHabit ? habitsCard : null}
 
-            {trend.suggestionText ? (
+            {!blocksMode && trend.suggestionText ? (
                 <p className="bg-card text-muted-foreground rounded-[1.25rem] p-4 text-[0.8125rem]">
                     {trend.suggestionText}
                 </p>
             ) : null}
 
-            {nutritionCard}
+            {blocksMode ? null : nutritionCard}
         </div>
     );
 }

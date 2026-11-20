@@ -138,7 +138,10 @@ async function MensurationsSection({ userId, program }: { userId: number; progra
 
 async function HistoriqueSection({ userId, program }: { userId: number; program: Program }) {
     const histories = await getAllExerciseHistories(userId, program);
-    const exercises = Object.keys(histories).map((key) => ({ key, name: getExerciseName(key) }));
+    // Sans chiffre (blocs du plancher pelvien) : rien à tracer.
+    const exercises = Object.keys(histories)
+        .filter((key) => histories[key].some((e) => e.sets.some((s) => s.reps != null)))
+        .map((key) => ({ key, name: getExerciseName(key) }));
     return <PerfHistoryView exercises={exercises} histories={histories} tractionKeys={TRACTION_KEYS} />;
 }
 

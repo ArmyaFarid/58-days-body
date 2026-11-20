@@ -5,6 +5,7 @@ import { LEXICON } from "./lexicon";
 import { DEFAULT_PROTEIN_GOAL, DEFAULT_CALORIE_GOAL } from "@/lib/nutrition";
 import { MASSE_FEMME } from "./masse-femme";
 import { FESSIERS_POSTURE } from "./fessiers-posture";
+import { PLANCHER_PELVIEN } from "./plancher-pelvien";
 import { LEGACY_EXERCISES } from "./revisions";
 import { allInternatSubstitutes } from "./internat";
 
@@ -13,6 +14,7 @@ export { SESSIONS } from "./sessions";
 export { LEXICON, youtubeSearchUrl } from "./lexicon";
 export { MASSE_FEMME } from "./masse-femme";
 export { FESSIERS_POSTURE } from "./fessiers-posture";
+export { PLANCHER_PELVIEN } from "./plancher-pelvien";
 export { EXERCISE_VARIANTS, variantsFor } from "./variants";
 export { sessionForDate } from "./revisions";
 export {
@@ -266,6 +268,7 @@ const PROGRAMS: Record<ProgramId, Program> = {
     "programme-58": PROGRAMME_58,
     "masse-femme": MASSE_FEMME,
     "fessiers-posture": FESSIERS_POSTURE,
+    "plancher-pelvien": PLANCHER_PELVIEN,
 };
 
 /** Programme d'un utilisateur ; NULL/inconnu ⇒ programme 58 (compte historique). */

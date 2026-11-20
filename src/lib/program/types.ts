@@ -15,7 +15,11 @@ export type DayType =
     | "fpb-b"
     | "fpb-c"
     | "fpb-1"
-    | "fpb-2";
+    | "fpb-2"
+    // Programme « plancher-pelvien » (une entrée par phase, tous les jours)
+    | "pp-1"
+    | "pp-2"
+    | "pp-3";
 
 export type PhaseKey = "bloc1" | "delestage" | "bloc2" | "taper";
 
@@ -65,7 +69,7 @@ export interface LexiconEntry {
 
 // ─── Abstraction multi-programmes ───
 
-export type ProgramId = "programme-58" | "masse-femme" | "fessiers-posture";
+export type ProgramId = "programme-58" | "masse-femme" | "fessiers-posture" | "plancher-pelvien";
 
 export type HabitFieldKey = "creatine" | "kcal3000" | "protein140" | "sleepBefore23";
 
@@ -92,6 +96,8 @@ export interface ProgramFeatures {
     creatineOptional?: boolean;
     /** Série de semaines complètes = indicateur principal de l'accueil. */
     weeklyStreak?: boolean;
+    /** 3 blocs guidés par jour (minuteur, tenue chronométrée, journal timing) au lieu d'une séance. */
+    dailyBlocks?: boolean;
 }
 
 /** Contexte de calendrier propre au programme suivi (jour, choix de phase). */

@@ -34,7 +34,7 @@ export function primeAudio() {
     }
 }
 
-function beep() {
+export function beep() {
     if (!audio) return;
     const now = audio.currentTime;
     for (const [i, freq] of [880, 1320].entries()) {

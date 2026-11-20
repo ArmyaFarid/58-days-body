@@ -25,7 +25,7 @@ import {
     substitutionsOf,
     type InternatSessionState,
 } from "@/lib/program";
-import { todayISO } from "@/lib/date";
+import { todayISO, TIMEZONE } from "@/lib/date";
 import { getFoodPortions, getLoggedEntries, setFoodPortion } from "@/lib/data/nutrition";
 import {
     getCustomFoods,
@@ -57,10 +57,13 @@ import {
     updateExerciseVariant,
     getOwnedSession,
     setSessionInternat,
+    getSetLogsForSession,
 } from "@/lib/data/workout";
 import { deletePhoto } from "@/lib/data/photos";
 import { upsertMeasurement } from "@/lib/data/measurements";
 import { resetAllData } from "@/lib/data/reset";
+import { addTimingEntry } from "@/lib/data/timing-journal";
+import { PELVIC_BLOCKS, PELVIC_HOLD_KEY, TIMING_OUTCOMES, TIMING_SIGNALS } from "@/lib/program/plancher-pelvien";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date invalide.");
 
@@ -164,6 +167,48 @@ export async function completeSessionAction(sessionId: number, completed: boolea
     await freezeInternat(userId, id);
     revalidatePath("/seance");
     revalidatePath("/");
+}
+
+const pelvicBlockSchema = z.object({
+    sessionId: z.number().int().positive(),
+    block: z.number().int().min(0).max(PELVIC_BLOCKS.length - 1),
+    // Tenues longues du bloc, en secondes (phases 2–3).
+    holds: z.array(z.number().int().min(1).max(999)).max(2),
+});
+
+/** Note un bloc du jour comme fait (avec ses tenues) ; 3 blocs faits = journée validée. */
+export async function completePelvicBlockAction(input: z.infer<typeof pelvicBlockSchema>) {
+    const userId = await requireUserId();
+    const { sessionId, block, holds } = pelvicBlockSchema.parse(input);
+    const time = new Intl.DateTimeFormat("fr-CA", { hour: "numeric", minute: "2-digit", timeZone: TIMEZONE })
+        .format(new Date())
+        .replace(":", " h ");
+    const base = { userId, sessionId, band: null, variant: null };
+    await saveSetLog({ ...base, exerciseKey: PELVIC_BLOCKS[block].key, setIndex: 0, reps: null, notes: time });
+    for (const [i, seconds] of holds.entries()) {
+        await saveSetLog({ ...base, exerciseKey: PELVIC_HOLD_KEY, setIndex: block * 2 + i, reps: seconds, notes: null });
+    }
+    const logs = await getSetLogsForSession(sessionId);
+    const done = PELVIC_BLOCKS.every((b) => logs.some((l) => l.exerciseKey === b.key));
+    if (done) await setSessionCompleted(userId, sessionId, true);
+    revalidatePath("/seance");
+    revalidatePath("/");
+    return { allDone: done };
+}
+
+const timingEntrySchema = z.object({
+    date: isoDate,
+    level: z.number().int().min(1).max(10),
+    signals: z.array(z.enum(TIMING_SIGNALS.map((s) => s.key) as [string, ...string[]])).max(TIMING_SIGNALS.length),
+    outcome: z.enum(TIMING_OUTCOMES.map((o) => o.key) as ["none", "ok", "ko"]),
+    note: z.string().max(500).nullable(),
+});
+
+export async function addTimingEntryAction(input: z.infer<typeof timingEntrySchema>) {
+    const userId = await requireUserId();
+    const parsed = timingEntrySchema.parse(input);
+    await addTimingEntry(userId, { ...parsed, note: parsed.note?.trim() || null });
+    revalidatePath("/seance");
 }
 
 interface InternatPatch {
