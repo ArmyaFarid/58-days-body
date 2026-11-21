@@ -245,10 +245,3 @@ button,
     transition-duration: 0.01ms !important;
   }
 }
-/* iOS n'épaissit jamais le trait du texte (contrairement à macOS, où la maquette
-   est vue) et Space Grotesk s'arrête à 700 : léger contour sur les titres gras. */
-@supports (-webkit-touch-callout: none) {
-  .font-heading.font-bold {
-    -webkit-text-stroke: 0.02em currentColor;
-  }
-}
