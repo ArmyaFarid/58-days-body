@@ -53,7 +53,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="fr" suppressHydrationWarning className={`${inter.variable} ${spaceGrotesk.variable} h-full antialiased`}>
+        <html lang="fr" suppressHydrationWarning className={`${inter.variable} ${spaceGrotesk.variable} h-full`}>
             <body className="bg-background text-foreground flex min-h-full flex-col">
                 <script dangerouslySetInnerHTML={{ __html: sizeScript }} />
                 <ThemeProvider
